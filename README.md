@@ -24,6 +24,15 @@ An "Everything"-style instant file search for Windows, built in-house so it can 
   memory; **Ctrl+Alt+F** (configurable) shows or hides it from any app. Ctrl+Q exits.
 * **Export**: Ctrl+S saves all results (Ctrl+Shift+S the selection) as CSV, one path per line, or Everything's `.efu`
   file-list format.
+* **Match highlighting**: the parts of each name (and path, for `path:` terms) that matched are shown in bold accent colour.
+* **Column chooser and persisted layout**: right-click a column header to choose columns (Name, Path, Size, Date modified,
+  Date created, Type, Attributes, Full path). Widths, order, visibility and the sort column are remembered.
+* **Network shares on a schedule**: add UNC paths or mapped drives in Settings. They are scanned, cached, and rescanned
+  every N hours (default 6) rather than watched live. "Rescan now" forces a scan.
+* **Single instance** (toggle in Settings): launching FastFind again brings the running window forward.
+* **Rename and bulk actions**: F2 renames one item; Ctrl+F2 (or "Rename multiple…") opens a preview-driven bulk renamer
+  with find/replace (plain or regex), prefix/suffix, numbering, case changes and extension changes. Move to folder,
+  Copy to folder and Delete (to the Recycle Bin, with confirmation) use the normal Windows progress dialogs.
 
 ## Build and run
 
@@ -77,4 +86,4 @@ record parser (fixups, attributes, extension records, data-run decoding) using s
 * Hard links are shown once (the first Win32 name in the MFT record).
 * Network drives can be indexed (Settings) but only with the directory walker, and large shares are slow to scan.
 * In directory-walk mode, changes made while the app is closed are reconciled by the background rescan at start-up.
-* Deleting files is deliberately not offered from the results list.
+* Delete always goes to the Recycle Bin and always asks first.

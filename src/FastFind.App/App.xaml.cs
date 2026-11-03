@@ -13,10 +13,34 @@ public partial class App : Application
     public static Settings Settings { get; private set; } = new();
     public static IndexManager IndexManager { get; private set; } = null!;
 
+    /// <summary>Registered window message broadcast by a second launch to make the running instance show itself.</summary>
+    public static uint ShowMessage { get; private set; }
+    private static Mutex? _instanceMutex;
+
+    [System.Runtime.InteropServices.DllImport("user32.dll", CharSet = System.Runtime.InteropServices.CharSet.Unicode)]
+    private static extern uint RegisterWindowMessageW(string lpString);
+
+    [System.Runtime.InteropServices.DllImport("user32.dll")]
+    private static extern bool PostMessageW(IntPtr hWnd, uint msg, IntPtr wParam, IntPtr lParam);
+
     protected override void OnStartup(StartupEventArgs e)
     {
         base.OnStartup(e);
         Settings = Settings.Load();
+        ShowMessage = RegisterWindowMessageW("FastFind.ShowWindow.v1");
+
+        if (Settings.SingleInstance)
+        {
+            bool first;
+            try { _instanceMutex = new Mutex(true, @"Local\FastFind.SingleInstance", out first); }
+            catch (Exception) { first = false; } // created by another account's elevated instance: treat as running
+            if (!first)
+            {
+                PostMessageW(new IntPtr(0xFFFF) /* HWND_BROADCAST */, ShowMessage, IntPtr.Zero, IntPtr.Zero);
+                Shutdown();
+                return;
+            }
+        }
         ApplyTheme(Settings.Theme);
 
         DispatcherUnhandledException += OnDispatcherUnhandledException;
@@ -27,6 +51,8 @@ public partial class App : Application
         IndexManager.Options.IncludeRemovable = Settings.IncludeRemovable;
         IndexManager.Options.IncludeNetwork = Settings.IncludeNetwork;
         foreach (var r in Settings.ExcludedRoots) IndexManager.Options.ExcludedRoots.Add(r);
+        IndexManager.Options.NetworkLocations.AddRange(Settings.NetworkLocations);
+        IndexManager.Options.NetworkRescanInterval = TimeSpan.FromHours(Math.Clamp(Settings.NetworkRescanHours, 0.25, 24 * 30));
         IndexManager.Options.CacheDirectory = Path.Combine(Logger.Directory, "cache");
         IndexManager.Log += Logger.Info;
         Logger.Info($"FastFind starting (elevated: {IndexManager.IsElevated})");

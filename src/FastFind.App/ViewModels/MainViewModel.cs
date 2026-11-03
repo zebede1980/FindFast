@@ -25,6 +25,8 @@ public sealed class MainViewModel : ObservableObject
     public RelayCommand ShowSettingsCommand { get; }
     public RelayCommand ShowHelpCommand { get; }
 
+    /// <summary>Set by the window; false while hidden in the tray so live-update refreshes are deferred.</summary>
+    public Func<bool>? IsWindowVisible { get; set; }
     /// <summary>Set by the window; opens the settings dialog.</summary>
     public Action? ShowSettings { get; set; }
     /// <summary>Set by the window; opens the syntax help window.</summary>
@@ -41,10 +43,23 @@ public sealed class MainViewModel : ObservableObject
         ShowHelpCommand = new RelayCommand(() => ShowHelp?.Invoke());
 
         manager.VolumesChanged += () => _dispatcher.BeginInvoke(UpdateVolumeStatus);
+        // Live updates: refresh the status immediately, but re-run searches at most every 1.5 s and only while visible,
+        // so a burst of file changes (a build, an update) does not keep resetting the results grid.
+        var refreshTimer = new DispatcherTimer(DispatcherPriority.Background, dispatcher) { Interval = TimeSpan.FromMilliseconds(1500) };
+        bool refreshPending = false;
+        refreshTimer.Tick += (_, _) =>
+        {
+            if (!refreshPending) { refreshTimer.Stop(); return; }
+            if (IsWindowVisible?.Invoke() == false) return; // keep waiting; refresh when shown again
+            refreshPending = false;
+            refreshTimer.Stop();
+            foreach (var t in Tabs) t.Refresh();
+        };
         manager.IndexChanged += () => _dispatcher.BeginInvoke(() =>
         {
             UpdateVolumeStatus();
-            foreach (var t in Tabs) t.Refresh();
+            refreshPending = true;
+            if (!refreshTimer.IsEnabled) refreshTimer.Start();
         });
         AddTab();
     }

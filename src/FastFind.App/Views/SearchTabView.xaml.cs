@@ -24,9 +24,13 @@ public partial class SearchTabView : UserControl
         InitializeComponent();
         Loaded += (_, _) =>
         {
-            CreatedColumn.Visibility = App.Settings.ShowCreatedColumn ? Visibility.Visible : Visibility.Collapsed;
+            ApplyColumnLayout();
             FocusSearch();
         };
+        Unloaded += (_, _) => SaveColumnLayout();
+        Grid.ColumnReordered += (_, _) => SaveColumnLayout();
+        foreach (var column in Grid.Columns)
+            DependencyPropertyDescriptor.FromProperty(DataGridColumn.WidthProperty, typeof(DataGridColumn)).AddValueChanged(column, (_, _) => ScheduleLayoutSave());
         IsVisibleChanged += (_, e) => { if (e.NewValue is true) Dispatcher.BeginInvoke(FocusSearch); };
         DataContextChanged += (_, e) =>
         {
@@ -44,9 +48,152 @@ public partial class SearchTabView : UserControl
         SearchBox.SelectAll();
     }
 
+    // ---- column chooser and layout persistence ----
+
+    private bool _applyingLayout;
+    private System.Windows.Threading.DispatcherTimer? _layoutSaveTimer;
+
+    private static string ColumnKey(DataGridColumn c) => c.Header?.ToString() ?? "";
+
+    private void ApplyColumnLayout()
+    {
+        var saved = App.Settings.Columns;
+        _applyingLayout = true;
+        try
+        {
+            if (saved.Count == 0)
+            {
+                CreatedColumn.Visibility = App.Settings.ShowCreatedColumn ? Visibility.Visible : Visibility.Collapsed;
+            }
+            else
+            {
+                foreach (var column in Grid.Columns)
+                {
+                    var s = saved.FirstOrDefault(x => x.Key == ColumnKey(column));
+                    if (s == null) continue;
+                    column.Visibility = s.Visible ? Visibility.Visible : Visibility.Collapsed;
+                    if (s.Width > 20) column.Width = new DataGridLength(s.Width);
+                }
+                // Apply display order from lowest to highest so indexes stay valid.
+                foreach (var s in saved.Where(x => x.DisplayIndex >= 0).OrderBy(x => x.DisplayIndex))
+                {
+                    var column = Grid.Columns.FirstOrDefault(c => ColumnKey(c) == s.Key);
+                    if (column != null && s.DisplayIndex < Grid.Columns.Count) column.DisplayIndex = s.DisplayIndex;
+                }
+            }
+            // Sort glyph for the persisted sort.
+            if (Vm != null)
+            {
+                var sortPath = Vm.SortField switch
+                {
+                    Core.Search.SortField.Path => "Path", Core.Search.SortField.Size => "Size", Core.Search.SortField.Modified => "Modified",
+                    Core.Search.SortField.Created => "Created", Core.Search.SortField.Extension => "Extension", _ => "Name",
+                };
+                foreach (var c in Grid.Columns) c.SortDirection = c.SortMemberPath == sortPath ? (Vm.SortDescending ? ListSortDirection.Descending : ListSortDirection.Ascending) : null;
+            }
+        }
+        finally { _applyingLayout = false; }
+    }
+
+    private void ScheduleLayoutSave()
+    {
+        if (_applyingLayout) return;
+        _layoutSaveTimer ??= new System.Windows.Threading.DispatcherTimer { Interval = TimeSpan.FromMilliseconds(500) };
+        _layoutSaveTimer.Stop();
+        _layoutSaveTimer.Tick -= OnLayoutSaveTick;
+        _layoutSaveTimer.Tick += OnLayoutSaveTick;
+        _layoutSaveTimer.Start();
+    }
+
+    private void OnLayoutSaveTick(object? sender, EventArgs e)
+    {
+        _layoutSaveTimer?.Stop();
+        SaveColumnLayout();
+    }
+
+    private void SaveColumnLayout()
+    {
+        if (_applyingLayout || !IsLoaded) return;
+        App.Settings.Columns = Grid.Columns.Select(c => new ColumnSetting
+        {
+            Key = ColumnKey(c),
+            Visible = c.Visibility == Visibility.Visible,
+            Width = c.Width.IsAbsolute ? c.Width.Value : c.ActualWidth,
+            DisplayIndex = c.DisplayIndex,
+        }).ToList();
+        App.Settings.ShowCreatedColumn = CreatedColumn.Visibility == Visibility.Visible;
+        App.Settings.Save();
+    }
+
+    /// <summary>Right-click on a column header: tick the columns to show.</summary>
+    private void ShowColumnChooser(DataGridColumnHeader header)
+    {
+        var menu = new ContextMenu();
+        foreach (var column in Grid.Columns.OrderBy(c => c.DisplayIndex))
+        {
+            var col = column;
+            var item = new MenuItem { Header = ColumnKey(col), IsCheckable = true, IsChecked = col.Visibility == Visibility.Visible, StaysOpenOnClick = true };
+            if (ColumnKey(col) == "Name") item.IsEnabled = false;
+            item.Click += (_, _) =>
+            {
+                col.Visibility = item.IsChecked ? Visibility.Visible : Visibility.Collapsed;
+                SaveColumnLayout();
+            };
+            menu.Items.Add(item);
+        }
+        menu.Items.Add(new Separator());
+        var reset = new MenuItem { Header = "Reset layout" };
+        reset.Click += (_, _) =>
+        {
+            App.Settings.Columns = new List<ColumnSetting>();
+            App.Settings.ShowCreatedColumn = false;
+            _applyingLayout = true;
+            int i = 0;
+            foreach (var c in Grid.Columns) { c.DisplayIndex = i++; }
+            Grid.Columns[0].Width = new DataGridLength(2.2, DataGridLengthUnitType.Star);
+            Grid.Columns[1].Width = new DataGridLength(3, DataGridLengthUnitType.Star);
+            Grid.Columns[2].Width = new DataGridLength(90);
+            Grid.Columns[3].Width = new DataGridLength(140);
+            Grid.Columns[4].Width = new DataGridLength(140);
+            Grid.Columns[5].Width = new DataGridLength(80);
+            Grid.Columns[6].Width = new DataGridLength(80);
+            Grid.Columns[7].Width = new DataGridLength(3, DataGridLengthUnitType.Star);
+            for (int k = 0; k < Grid.Columns.Count; k++) Grid.Columns[k].Visibility = k is 4 or 6 or 7 ? Visibility.Collapsed : Visibility.Visible;
+            _applyingLayout = false;
+            App.Settings.Save();
+        };
+        menu.Items.Add(reset);
+        menu.PlacementTarget = header;
+        menu.IsOpen = true;
+    }
+
+    private ScrollViewer? _gridScroller;
+
     private void OnVmPropertyChanged(object? sender, PropertyChangedEventArgs e)
     {
-        if (e.PropertyName == nameof(SearchTabViewModel.Results)) UpdateEmptyState();
+        if (e.PropertyName != nameof(SearchTabViewModel.Results)) return;
+        UpdateEmptyState();
+        // A live-update refresh should not yank the list back to the top or drop the selection.
+        if (Vm is { IsRefreshing: true })
+        {
+            _gridScroller ??= MainWindow.FindVisualChild<ScrollViewer>(Grid);
+            double offset = _gridScroller?.VerticalOffset ?? 0;
+            var selectedPaths = Grid.SelectedItems.OfType<ResultRow>().Select(r => r.FullPath).ToHashSet(StringComparer.OrdinalIgnoreCase);
+            Dispatcher.BeginInvoke(System.Windows.Threading.DispatcherPriority.Loaded, () =>
+            {
+                if (offset > 0) _gridScroller?.ScrollToVerticalOffset(offset);
+                if (selectedPaths.Count > 0 && selectedPaths.Count <= 200 && Vm != null)
+                {
+                    int first = (int)offset;
+                    int last = Math.Min(Vm.Results.Count, first + 200);
+                    for (int i = Math.Max(0, first - 50); i < last; i++)
+                    {
+                        var row = Vm.Results[i];
+                        if (selectedPaths.Contains(row.FullPath)) Grid.SelectedItems.Add(row);
+                    }
+                }
+            });
+        }
     }
 
     private void UpdateEmptyState()
@@ -139,6 +286,9 @@ public partial class SearchTabView : UserControl
         else if (ctrl && shift && e.Key == Key.C) { CopyPaths(); e.Handled = true; }
         else if (ctrl && e.Key == Key.C) { CopyFiles(); e.Handled = true; }
         else if (ctrl && shift && e.Key == Key.E) { if (FirstSelected() is { } r) ShellOps.ShowInExplorer(r.FullPath); e.Handled = true; }
+        else if (ctrl && e.Key == Key.F2) { BulkRenameSelected(); e.Handled = true; }
+        else if (e.Key == Key.F2) { RenameSelected(); e.Handled = true; }
+        else if (e.Key == Key.Delete && !ctrl && !shift) { DeleteSelected(); e.Handled = true; }
         else if (e.Key == Key.Escape) { FocusSearch(); e.Handled = true; }
         else if (e.Key == Key.Back) { FocusSearch(); }
         else if (!ctrl && !alt && e.Key >= Key.A && e.Key <= Key.Z || e.Key >= Key.D0 && e.Key <= Key.D9 || e.Key == Key.Space)
@@ -213,7 +363,62 @@ public partial class SearchTabView : UserControl
 
     private void OnContextMenuOpening(object sender, ContextMenuEventArgs e)
     {
+        if (e.OriginalSource is DependencyObject d && MainWindow.FindVisualParent<DataGridColumnHeader>(d) is { } header)
+        {
+            e.Handled = true;
+            ShowColumnChooser(header);
+            return;
+        }
         if (SelectedRows().Count == 0) e.Handled = true;
+    }
+
+    // ---- rename, move, copy, delete ----
+
+    private void OnRenameClick(object sender, RoutedEventArgs e) => RenameSelected();
+    private void OnBulkRenameClick(object sender, RoutedEventArgs e) => BulkRenameSelected();
+    private void OnDeleteClick(object sender, RoutedEventArgs e) => DeleteSelected();
+
+    private void RenameSelected()
+    {
+        var rows = SelectedRows();
+        if (rows.Count == 0) return;
+        if (rows.Count > 1) { BulkRenameSelected(); return; }
+        var dialog = new RenameWindow(rows[0].FullPath) { Owner = Window.GetWindow(this) };
+        if (dialog.ShowDialog() == true) Vm?.SetTransientStatus("Renamed. The index updates as the change is picked up.");
+    }
+
+    private void BulkRenameSelected()
+    {
+        var rows = SelectedRows();
+        if (rows.Count == 0) return;
+        var dialog = new BulkRenameWindow(rows.Select(r => r.FullPath)) { Owner = Window.GetWindow(this) };
+        if (dialog.ShowDialog() == true) Vm?.SetTransientStatus($"Renamed {dialog.RenamedCount:N0} items.");
+    }
+
+    private void DeleteSelected()
+    {
+        var rows = SelectedRows();
+        if (rows.Count == 0) return;
+        string what = rows.Count == 1 ? $"'{rows[0].Name}'" : $"these {rows.Count:N0} items";
+        var answer = MessageBox.Show(Window.GetWindow(this), $"Send {what} to the Recycle Bin?", "Delete", MessageBoxButton.YesNo, MessageBoxImage.Question, MessageBoxResult.No);
+        if (answer != MessageBoxResult.Yes) return;
+        ShellFileOps.Recycle(rows.Select(r => r.FullPath).ToList(), Window.GetWindow(this));
+        Vm?.SetTransientStatus($"Sent {rows.Count:N0} items to the Recycle Bin.");
+    }
+
+    private void OnMoveToClick(object sender, RoutedEventArgs e) => MoveOrCopySelected(move: true);
+    private void OnCopyToClick(object sender, RoutedEventArgs e) => MoveOrCopySelected(move: false);
+
+    private void MoveOrCopySelected(bool move)
+    {
+        var rows = SelectedRows();
+        if (rows.Count == 0) return;
+        var dialog = new Microsoft.Win32.OpenFolderDialog { Title = move ? $"Move {rows.Count:N0} items to" : $"Copy {rows.Count:N0} items to" };
+        if (dialog.ShowDialog(Window.GetWindow(this)) != true) return;
+        var paths = rows.Select(r => r.FullPath).ToList();
+        if (move) ShellFileOps.MoveTo(paths, dialog.FolderName, Window.GetWindow(this));
+        else ShellFileOps.CopyTo(paths, dialog.FolderName, Window.GetWindow(this));
+        Vm?.SetTransientStatus($"{(move ? "Moved" : "Copied")} {rows.Count:N0} items to {dialog.FolderName}.");
     }
 
     // ---- context menu actions ----

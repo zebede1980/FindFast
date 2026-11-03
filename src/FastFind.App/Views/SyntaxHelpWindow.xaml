@@ -88,7 +88,7 @@
                     <ColumnDefinition Width="Auto" /><ColumnDefinition Width="*" />
                 </Grid.ColumnDefinitions>
                 <Grid.RowDefinitions>
-                    <RowDefinition /><RowDefinition /><RowDefinition /><RowDefinition /><RowDefinition /><RowDefinition /><RowDefinition /><RowDefinition />
+                    <RowDefinition /><RowDefinition /><RowDefinition /><RowDefinition /><RowDefinition /><RowDefinition /><RowDefinition /><RowDefinition /><RowDefinition />
                 </Grid.RowDefinitions>
                 <TextBlock Style="{StaticResource Code}" Grid.Row="0" Text="Ctrl+T / Ctrl+W / Ctrl+Tab" />
                 <TextBlock Style="{StaticResource Desc}" Grid.Row="0" Grid.Column="1" Text="New tab, close tab, switch tabs. Middle-click a tab to close it." />
@@ -104,6 +104,8 @@
                 <TextBlock Style="{StaticResource Desc}" Grid.Row="5" Grid.Column="1" Text="Rebuild the index." />
                 <TextBlock Style="{StaticResource Code}" Grid.Row="6" Text="Ctrl+S / Ctrl+Shift+S" />
                 <TextBlock Style="{StaticResource Desc}" Grid.Row="6" Grid.Column="1" Text="Export all results / the selection as CSV, a list of paths, or an Everything .efu file list." />
+                <TextBlock Style="{StaticResource Code}" Grid.Row="8" Text="F2 / Ctrl+F2 / Del" />
+                <TextBlock Style="{StaticResource Desc}" Grid.Row="8" Grid.Column="1" Text="Rename / rename multiple with preview / send to the Recycle Bin. Move and copy to a folder are on the right-click menu. Right-click a column header to choose columns." />
                 <TextBlock Style="{StaticResource Code}" Grid.Row="7" Text="Ctrl+Alt+F (global)" />
                 <TextBlock Style="{StaticResource Desc}" Grid.Row="7" Grid.Column="1" Text="Show or hide FastFind from anywhere. Change it in Settings. Closing the window keeps FastFind in the tray; Ctrl+Q exits." />
             </Grid>

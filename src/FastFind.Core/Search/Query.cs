@@ -19,6 +19,18 @@ public sealed class SearchQuery
         return true;
     }
 
+    /// <summary>All positive text terms in the query (used for result highlighting).</summary>
+    public IEnumerable<TextTerm> TextTerms()
+    {
+        foreach (var c in Clauses)
+            foreach (var t in c.Alternatives)
+            {
+                if (t is TextTerm tt && !tt.Negated) yield return tt;
+                else if (t is IHasInnerTerms inner)
+                    foreach (var x in inner.InnerTerms()) if (x is TextTerm it && !it.Negated) yield return it;
+            }
+    }
+
     /// <summary>Orders clauses so cheap name/metadata checks run before path building.</summary>
     public void Optimise()
     {
@@ -40,6 +52,11 @@ public sealed class OrClause
         }
         return false;
     }
+}
+
+public interface IHasInnerTerms
+{
+    IEnumerable<Term> InnerTerms();
 }
 
 public abstract class Term
@@ -116,6 +133,61 @@ public sealed class TextTerm : Term
             default:
                 try { return _regex!.IsMatch(s); }
                 catch (RegexMatchTimeoutException) { return false; }
+        }
+    }
+
+    /// <summary>Character ranges in <paramref name="s"/> that this term matches, for highlighting. Empty for negated terms.</summary>
+    public void FindMatches(string s, List<(int Start, int Length)> output)
+    {
+        if (Negated || s.Length == 0) return;
+        switch (Mode)
+        {
+            case TextMatchMode.Substring:
+            case TextMatchMode.WholeWord:
+            {
+                if (Text.Length == 0) return;
+                int start = 0;
+                while (start <= s.Length - Text.Length)
+                {
+                    int i = s.IndexOf(Text, start, _comparison);
+                    if (i < 0) break;
+                    output.Add((i, Text.Length));
+                    start = i + Text.Length;
+                }
+                break;
+            }
+            case TextMatchMode.Exact:
+                if (s.Equals(Text, _comparison)) output.Add((0, s.Length));
+                break;
+            default:
+                try
+                {
+                    foreach (System.Text.RegularExpressions.Match m in _regex!.Matches(s))
+                    {
+                        if (m.Length == 0) continue;
+                        // Wildcard patterns match the whole string; highlight only the literal parts so * does not light up everything.
+                        if (Mode == TextMatchMode.Wildcard) AddLiteralParts(s, m.Index, m.Length, output);
+                        else output.Add((m.Index, m.Length));
+                    }
+                }
+                catch (RegexMatchTimeoutException) { }
+                break;
+        }
+    }
+
+    private void AddLiteralParts(string s, int matchStart, int matchLength, List<(int Start, int Length)> output)
+    {
+        foreach (var literal in Text.Split(new[] { '*', '?' }, StringSplitOptions.RemoveEmptyEntries))
+        {
+            int from = matchStart;
+            int end = matchStart + matchLength;
+            while (from < end)
+            {
+                int i = s.IndexOf(literal, from, end - from, _comparison);
+                if (i < 0) break;
+                output.Add((i, literal.Length));
+                from = i + literal.Length;
+            }
         }
     }
 

@@ -204,11 +204,12 @@ public static class QueryParser
 
     private static Term Combine(Term a, Term b) => new AndTerm(a, b);
 
-    private sealed class AndTerm : Term
+    private sealed class AndTerm : Term, IHasInnerTerms
     {
         private readonly Term _a, _b;
         public AndTerm(Term a, Term b) { _a = a; _b = b; }
         public override int Cost => Math.Max(_a.Cost, _b.Cost);
+        public IEnumerable<Term> InnerTerms() { yield return _a; yield return _b; }
         protected override bool MatchesCore(Indexing.VolumeIndex volume, int index, string name)
             => _a.Matches(volume, index, name) && _b.Matches(volume, index, name);
     }

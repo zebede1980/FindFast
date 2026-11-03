@@ -32,9 +32,19 @@ public sealed class SearchTabViewModel : ObservableObject
     public static readonly string[] KindChoices = { "Any", "Documents", "Images", "Audio", "Video", "Archives", "Executables", "Code" };
     public static readonly string[] DateChoices = { "Any time", "Today", "Yesterday", "Last 7 days", "Last 30 days", "This month", "This year", "Custom range" };
 
+    private Controls.Highlighter _nameHighlighter = Controls.Highlighter.None;
+    private Controls.Highlighter _pathHighlighter = Controls.Highlighter.None;
+
+    /// <summary>Terms to light up in the Name column (every positive text term).</summary>
+    public Controls.Highlighter NameHighlighter { get => _nameHighlighter; private set => Set(ref _nameHighlighter, value); }
+    /// <summary>Terms to light up in the Path column (only terms that match against the path).</summary>
+    public Controls.Highlighter PathHighlighter { get => _pathHighlighter; private set => Set(ref _pathHighlighter, value); }
+
     public SearchTabViewModel(IndexManager manager)
     {
         _manager = manager;
+        if (Enum.TryParse<SortField>(App.Settings.SortField, out var savedSort)) _sortField = savedSort;
+        _sortDescending = App.Settings.SortDescending;
         _debounce = new DispatcherTimer(DispatcherPriority.Input) { Interval = TimeSpan.FromMilliseconds(40) };
         _debounce.Tick += (_, _) => { _debounce.Stop(); RunSearch(); };
         ClearFiltersCommand = new RelayCommand(ClearFilters);
@@ -80,6 +90,8 @@ public sealed class SearchTabViewModel : ObservableObject
     {
         _sortField = field;
         _sortDescending = descending;
+        App.Settings.SortField = field.ToString();
+        App.Settings.SortDescending = descending;
         Requery(immediate: true);
     }
 
@@ -93,8 +105,15 @@ public sealed class SearchTabViewModel : ObservableObject
         Requery();
     }
 
+    /// <summary>True while the next result set comes from a live-update refresh rather than user input (the view keeps its scroll position).</summary>
+    public bool IsRefreshing { get; private set; }
+
     /// <summary>Called by the index manager when live updates land; re-runs the current search quietly.</summary>
-    public void Refresh() => Requery(immediate: true);
+    public void Refresh()
+    {
+        IsRefreshing = true;
+        Requery(immediate: true);
+    }
 
     public void Requery(bool immediate = false)
     {
@@ -153,7 +172,9 @@ public sealed class SearchTabViewModel : ObservableObject
         Task.Run(() =>
         {
             var query = QueryParser.Parse(text, options, filters);
-            return SearchEngine.Search(volumes, query, sort, desc, cts.Token);
+            var result = SearchEngine.Search(volumes, query, sort, desc, cts.Token);
+            var terms = query.TextTerms().ToList();
+            return (result, name: new Controls.Highlighter(terms), path: new Controls.Highlighter(terms.Where(t => t.MatchPath)));
         }, cts.Token).ContinueWith(t =>
         {
             if (version != _searchVersion) return;
@@ -164,8 +185,11 @@ public sealed class SearchTabViewModel : ObservableObject
                 ErrorText = t.Exception?.GetBaseException().Message;
                 return;
             }
-            var result = t.Result;
+            var (result, nameHighlighter, pathHighlighter) = t.Result;
+            NameHighlighter = nameHighlighter;
+            PathHighlighter = pathHighlighter;
             Results = new ResultCollection(result);
+            IsRefreshing = false;
             ErrorText = result.Error;
             StatusText = volumes.Count == 0
                 ? "Index is still building…"

@@ -62,6 +62,24 @@ public sealed class ResultRow
     public string TypeText => IsDirectory ? "Folder" : Extension.Length == 0 ? "File" : Extension.ToUpperInvariant();
     public bool IsHidden => (Attributes & (FileAttributes.Hidden | FileAttributes.System)) != 0;
 
+    /// <summary>Explorer-style attribute letters: R H S A C E L (read-only, hidden, system, archive, compressed, encrypted, link).</summary>
+    public string AttributesText
+    {
+        get
+        {
+            Span<char> buf = stackalloc char[8];
+            int n = 0;
+            if ((Attributes & FileAttributes.ReadOnly) != 0) buf[n++] = 'R';
+            if ((Attributes & FileAttributes.Hidden) != 0) buf[n++] = 'H';
+            if ((Attributes & FileAttributes.System) != 0) buf[n++] = 'S';
+            if ((Attributes & FileAttributes.Archive) != 0) buf[n++] = 'A';
+            if ((Attributes & FileAttributes.Compressed) != 0) buf[n++] = 'C';
+            if ((Attributes & FileAttributes.Encrypted) != 0) buf[n++] = 'E';
+            if ((Attributes & FileAttributes.ReparsePoint) != 0) buf[n++] = 'L';
+            return new string(buf[..n]);
+        }
+    }
+
     public ImageSource? Icon => _icon ??= ShellIcons.GetIcon(FullPath, IsDirectory, Extension);
 }
 

@@ -15,6 +15,9 @@ public partial class MainWindow : Window
     private const int DBT_DEVICEARRIVAL = 0x8000;
     private const int DBT_DEVICEREMOVECOMPLETE = 0x8004;
 
+    [System.Runtime.InteropServices.DllImport("user32.dll", SetLastError = true)]
+    private static extern bool ChangeWindowMessageFilterEx(IntPtr hwnd, uint message, uint action, IntPtr changeFilterStruct);
+
     public MainViewModel ViewModel { get; }
 
     private TrayIcon? _tray;
@@ -25,6 +28,7 @@ public partial class MainWindow : Window
     {
         InitializeComponent();
         ViewModel = new MainViewModel(App.IndexManager, Dispatcher);
+        ViewModel.IsWindowVisible = () => IsVisible && WindowState != WindowState.Minimized;
         ViewModel.ShowSettings = () => OnSettingsClick(this, new RoutedEventArgs());
         ViewModel.ShowHelp = () => OnHelpClick(this, new RoutedEventArgs());
         DataContext = ViewModel;
@@ -47,8 +51,11 @@ public partial class MainWindow : Window
         var source = (HwndSource?)PresentationSource.FromVisual(this);
         source?.AddHook(WndProc);
 
-        _hotkey = new GlobalHotkey(new WindowInteropHelper(this).Handle);
+        var hwnd = new WindowInteropHelper(this).Handle;
+        _hotkey = new GlobalHotkey(hwnd);
         ApplyHotkey(App.Settings.Hotkey);
+        // Let a non-elevated second launch reach an elevated running instance (UIPI blocks the message otherwise).
+        ChangeWindowMessageFilterEx(hwnd, App.ShowMessage, 1 /* MSGFLT_ALLOW */, IntPtr.Zero);
 
         _tray = new TrayIcon(_hotkey.Error == null ? _hotkey.Text : "");
         _tray.ShowRequested += () => Dispatcher.BeginInvoke(ShowFromTray);
@@ -78,7 +85,22 @@ public partial class MainWindow : Window
             e.Cancel = true;
             Hide();
             _tray.ShowHiddenTip(_hotkey?.Error == null ? _hotkey?.Text ?? "" : "");
+            TrimMemory();
         }
+    }
+
+    [System.Runtime.InteropServices.DllImport("kernel32.dll")]
+    private static extern bool SetProcessWorkingSetSize(IntPtr process, IntPtr min, IntPtr max);
+
+    /// <summary>While hidden in the tray, give unused heap and working set back to Windows.</summary>
+    private static void TrimMemory()
+    {
+        Task.Run(() =>
+        {
+            GC.Collect(2, GCCollectionMode.Forced, blocking: true, compacting: true);
+            GC.WaitForPendingFinalizers();
+            SetProcessWorkingSetSize(System.Diagnostics.Process.GetCurrentProcess().Handle, new IntPtr(-1), new IntPtr(-1));
+        });
     }
 
     public void ShowFromTray()
@@ -109,6 +131,12 @@ public partial class MainWindow : Window
         if (_hotkey != null && _hotkey.IsMessage(msg, wParam))
         {
             ToggleFromHotkey();
+            handled = true;
+            return IntPtr.Zero;
+        }
+        if (App.ShowMessage != 0 && (uint)msg == App.ShowMessage)
+        {
+            ShowFromTray();
             handled = true;
             return IntPtr.Zero;
         }

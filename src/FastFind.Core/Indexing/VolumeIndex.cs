@@ -95,9 +95,37 @@ public sealed class VolumeIndex
 
     public bool TryGetIndex(ulong key, out int index) => _byKey.TryGetValue(key, out index);
 
-    /// <summary>Finds a direct child by name. Linear scan; used only by the slow FileSystemWatcher path.</summary>
+    private Dictionary<ChildKey, int>? _children;
+
+    private readonly record struct ChildKey(int Parent, string Name);
+
+    private sealed class ChildKeyComparer : IEqualityComparer<ChildKey>
+    {
+        public static readonly ChildKeyComparer Instance = new();
+        public bool Equals(ChildKey a, ChildKey b) => a.Parent == b.Parent && string.Equals(a.Name, b.Name, StringComparison.OrdinalIgnoreCase);
+        public int GetHashCode(ChildKey k) => HashCode.Combine(k.Parent, StringComparer.OrdinalIgnoreCase.GetHashCode(k.Name));
+    }
+
+    /// <summary>
+    /// Builds a (parent, name) lookup so path-based updates from FileSystemWatcher are O(1) instead of a scan per event.
+    /// Only needed for directory-walk indexes; MFT indexes are keyed by file reference. Caller holds the write lock.
+    /// </summary>
+    public void EnableChildLookup()
+    {
+        if (_children != null) return;
+        var map = new Dictionary<ChildKey, int>(_live, ChildKeyComparer.Instance);
+        for (int i = 0; i < _count; i++)
+        {
+            if (_names[i] is { } n && i != RootIndex) map[new ChildKey(_meta[i].Parent, n)] = i;
+        }
+        _children = map;
+    }
+
+    /// <summary>Finds a direct child by name.</summary>
     public int FindChild(int parent, ReadOnlySpan<char> name)
     {
+        if (_children != null)
+            return _children.TryGetValue(new ChildKey(parent, name.ToString()), out int idx) ? idx : -1;
         var names = _names;
         var meta = _meta;
         for (int i = 0; i < _count; i++)
@@ -139,6 +167,7 @@ public sealed class VolumeIndex
             ModifiedFileTime = modifiedFileTime, CreatedFileTime = createdFileTime,
         };
         _byKey[key] = i;
+        _children?.TryAdd(new ChildKey(parent, name), i);
         _live++;
         _nameOrder = null;
         return i;
@@ -148,6 +177,7 @@ public sealed class VolumeIndex
     {
         if ((uint)i >= (uint)_count || _names[i] == null || i == RootIndex) return;
         _byKey.Remove(_meta[i].Key);
+        _children?.Remove(new ChildKey(_meta[i].Parent, _names[i]!));
         _names[i] = null;
         _dirPaths[i] = null;
         _live--;
@@ -181,8 +211,10 @@ public sealed class VolumeIndex
     public void Rename(int i, string newName, int newParent)
     {
         if ((uint)i >= (uint)_count || _names[i] == null) return;
+        _children?.Remove(new ChildKey(_meta[i].Parent, _names[i]!));
         _names[i] = newName;
         _meta[i].Parent = newParent;
+        _children?.TryAdd(new ChildKey(newParent, newName), i);
         if (IsDirectory(i)) Array.Clear(_dirPaths, 0, _count);
         _nameOrder = null;
     }

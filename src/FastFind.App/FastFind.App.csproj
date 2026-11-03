@@ -14,6 +14,11 @@
     <ProjectReference Include="..\FastFind.Core\FastFind.Core.csproj" />
   </ItemGroup>
   <ItemGroup>
+    <!-- Tray-resident app: prefer a smaller heap over a little GC throughput. -->
+    <RuntimeHostConfigurationOption Include="System.GC.ConserveMemory" Value="6" />
+    <RuntimeHostConfigurationOption Include="System.GC.RetainVM" Value="false" />
+  </ItemGroup>
+  <ItemGroup>
     <!-- WinForms is only used for the tray icon; keep its namespace out of the implicit usings to avoid clashes with WPF types. -->
     <Using Remove="System.Windows.Forms" />
     <Using Remove="System.Drawing" />

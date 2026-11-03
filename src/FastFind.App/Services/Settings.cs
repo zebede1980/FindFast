@@ -19,6 +19,15 @@ public sealed class Settings
     public bool MinimizeToTray { get; set; } = true;
     /// <summary>System-wide shortcut that shows/hides the window; empty disables it.</summary>
     public string Hotkey { get; set; } = "Ctrl+Alt+F";
+    /// <summary>Launching a second copy brings the running one to the front instead.</summary>
+    public bool SingleInstance { get; set; } = true;
+    /// <summary>UNC paths (or drive roots) indexed on a schedule.</summary>
+    public List<string> NetworkLocations { get; set; } = new();
+    public double NetworkRescanHours { get; set; } = 6;
+    /// <summary>Saved results-grid layout: one entry per column.</summary>
+    public List<ColumnSetting> Columns { get; set; } = new();
+    public string SortField { get; set; } = "Name";
+    public bool SortDescending { get; set; }
 
     private static readonly string FilePath = Path.Combine(Logger.Directory, "settings.json");
     private static readonly JsonSerializerOptions Options = new() { WriteIndented = true, DefaultIgnoreCondition = JsonIgnoreCondition.Never };
@@ -42,4 +51,12 @@ public sealed class Settings
         }
         catch (Exception ex) { Logger.Warn($"Settings save failed: {ex.Message}"); }
     }
+}
+
+public sealed class ColumnSetting
+{
+    public string Key { get; set; } = "";
+    public bool Visible { get; set; } = true;
+    public double Width { get; set; }
+    public int DisplayIndex { get; set; }
 }

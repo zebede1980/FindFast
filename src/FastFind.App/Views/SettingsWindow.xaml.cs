@@ -24,6 +24,9 @@ public partial class SettingsWindow : Window
         NetworkBox.IsChecked = s.IncludeNetwork;
         TrayBox.IsChecked = s.MinimizeToTray;
         HotkeyBox.Text = s.Hotkey;
+        SingleInstanceBox.IsChecked = s.SingleInstance;
+        RescanHoursBox.Text = s.NetworkRescanHours.ToString("0.##");
+        foreach (var p in s.NetworkLocations) NetworkList.Items.Add(p);
         VolumeGrid.ItemsSource = _vm.Volumes;
         ElevationText.Text = vm.IsElevated
             ? "Running as administrator: NTFS volumes are read straight from the Master File Table and kept live via the USN change journal."
@@ -53,12 +56,18 @@ public partial class SettingsWindow : Window
         s.IncludeRemovable = RemovableBox.IsChecked == true;
         s.IncludeNetwork = NetworkBox.IsChecked == true;
         s.MinimizeToTray = TrayBox.IsChecked == true;
+        s.SingleInstance = SingleInstanceBox.IsChecked == true;
         s.Save();
         _vm.Manager.Options.IncludeRemovable = s.IncludeRemovable;
         _vm.Manager.Options.IncludeNetwork = s.IncludeNetwork;
         _ = _vm.Manager.RefreshVolumesAsync();
         if (Owner is MainWindow main && MainWindow.FindVisualChild<SearchTabView>(main) is { } view)
             view.CreatedColumn.Visibility = s.ShowCreatedColumn ? Visibility.Visible : Visibility.Collapsed;
+        if (s.Columns.Count > 0)
+        {
+            var created = s.Columns.FirstOrDefault(c => c.Key == "Date created");
+            if (created != null) { created.Visible = s.ShowCreatedColumn; s.Save(); }
+        }
     }
 
     private void OnHotkeyKeyDown(object sender, System.Windows.Input.KeyEventArgs e)
@@ -77,6 +86,60 @@ public partial class SettingsWindow : Window
             App.Settings.Hotkey = text;
             App.Settings.Save();
         }
+    }
+
+    // ---- network locations ----
+
+    private void OnNetworkPathKeyDown(object sender, System.Windows.Input.KeyEventArgs e)
+    {
+        if (e.Key == System.Windows.Input.Key.Enter) { OnAddNetworkClick(sender, e); e.Handled = true; }
+    }
+
+    private void OnAddNetworkClick(object sender, RoutedEventArgs e)
+    {
+        string root = IndexManager.NormalizeRoot(NetworkPathBox.Text);
+        if (root.Length < 3) return;
+        if (!root.StartsWith(@"\\") && !(root.Length == 3 && root[1] == ':'))
+        {
+            MessageBox.Show(this, @"Enter a UNC path such as \\server\share or a drive root such as Z:\", "Network location", MessageBoxButton.OK, MessageBoxImage.Information);
+            return;
+        }
+        if (NetworkList.Items.Cast<string>().Any(x => x.Equals(root, StringComparison.OrdinalIgnoreCase))) return;
+        NetworkList.Items.Add(root);
+        NetworkPathBox.Clear();
+        SaveNetworkLocations();
+    }
+
+    private void OnRemoveNetworkClick(object sender, RoutedEventArgs e)
+    {
+        if (NetworkList.SelectedItem is not string root) return;
+        NetworkList.Items.Remove(root);
+        SaveNetworkLocations();
+        _ = _vm.Manager.RefreshVolumesAsync(); // drops the volume on the next discovery pass
+    }
+
+    private void SaveNetworkLocations()
+    {
+        var s = App.Settings;
+        s.NetworkLocations = NetworkList.Items.Cast<string>().ToList();
+        s.Save();
+        _vm.Manager.Options.NetworkLocations.Clear();
+        _vm.Manager.Options.NetworkLocations.AddRange(s.NetworkLocations);
+        _ = _vm.Manager.RefreshVolumesAsync();
+    }
+
+    private void OnRescanHoursChanged(object sender, RoutedEventArgs e)
+    {
+        if (_loading) return;
+        if (!double.TryParse(RescanHoursBox.Text, out double hours) || hours <= 0) { RescanHoursBox.Text = App.Settings.NetworkRescanHours.ToString("0.##"); return; }
+        App.Settings.NetworkRescanHours = hours;
+        App.Settings.Save();
+        _vm.Manager.Options.NetworkRescanInterval = TimeSpan.FromHours(Math.Clamp(hours, 0.25, 24 * 30));
+    }
+
+    private void OnRescanNetworkClick(object sender, RoutedEventArgs e)
+    {
+        foreach (var v in _vm.Manager.Volumes.Where(v => v.IsNetwork)) _ = _vm.Manager.RebuildAsync(v.Root);
     }
 
     private void OnRebuildClick(object sender, RoutedEventArgs e) => _ = _vm.Manager.RebuildAllAsync();
