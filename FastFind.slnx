@@ -1,0 +1,10 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/FastFind.App/FastFind.App.csproj" />
+    <Project Path="src/FastFind.Cli/FastFind.Cli.csproj" />
+    <Project Path="src/FastFind.Core/FastFind.Core.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/FastFind.Core.Tests/FastFind.Core.Tests.csproj" />
+  </Folder>
+</Solution>

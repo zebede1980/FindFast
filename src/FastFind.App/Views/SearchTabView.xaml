@@ -1,0 +1,215 @@
+<UserControl x:Class="FastFind.App.Views.SearchTabView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="clr-namespace:FastFind.App.ViewModels"
+             AllowDrop="True" Focusable="False">
+    <Grid Margin="12,10,12,0">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+        </Grid.RowDefinitions>
+
+        <!-- Search bar -->
+        <Grid Grid.Row="0">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="Auto" />
+            </Grid.ColumnDefinitions>
+            <Border x:Name="SearchBorder" CornerRadius="8" Height="40" Background="{DynamicResource ControlFillColorDefaultBrush}" BorderThickness="1">
+                <Border.Style>
+                    <Style TargetType="Border">
+                        <Setter Property="BorderBrush" Value="{DynamicResource ControlStrokeColorDefaultBrush}" />
+                        <Style.Triggers>
+                            <DataTrigger Binding="{Binding IsKeyboardFocusWithin, ElementName=SearchBox}" Value="True">
+                                <Setter Property="BorderBrush" Value="{DynamicResource AccentFillColorDefaultBrush}" />
+                            </DataTrigger>
+                        </Style.Triggers>
+                    </Style>
+                </Border.Style>
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+                    <TextBlock FontFamily="{StaticResource IconFont}" Text="&#xE721;" FontSize="15" Margin="13,0,10,0" VerticalAlignment="Center"
+                               Foreground="{DynamicResource TextFillColorSecondaryBrush}" />
+                    <TextBox x:Name="SearchBox" Grid.Column="1" Background="Transparent" BorderThickness="0" Padding="0" FontSize="15"
+                             VerticalContentAlignment="Center" VerticalAlignment="Stretch" CaretBrush="{DynamicResource TextFillColorPrimaryBrush}"
+                             Foreground="{DynamicResource TextFillColorPrimaryBrush}"
+                             Text="{Binding QueryText, UpdateSourceTrigger=PropertyChanged}" KeyDown="OnSearchBoxKeyDown">
+                        <TextBox.Template>
+                            <ControlTemplate TargetType="TextBox">
+                                <ScrollViewer x:Name="PART_ContentHost" VerticalAlignment="Center" HorizontalScrollBarVisibility="Hidden" VerticalScrollBarVisibility="Hidden" />
+                            </ControlTemplate>
+                        </TextBox.Template>
+                    </TextBox>
+                    <TextBlock Grid.Column="1" Text="Search every file and folder…  (try  ext:pdf dm:thisweek  or  *.log size:>10mb)" FontSize="14" IsHitTestVisible="False"
+                               VerticalAlignment="Center" Margin="2,0,0,0" Foreground="{DynamicResource TextFillColorTertiaryBrush}"
+                               Visibility="{Binding Text.IsEmpty, ElementName=SearchBox, Converter={StaticResource BoolToVisibility}}" />
+                    <ProgressBar Grid.Column="2" Width="40" Height="3" Margin="8,0" IsIndeterminate="True" VerticalAlignment="Center"
+                                 Visibility="{Binding IsSearching, Converter={StaticResource BoolToVisibility}}" />
+                    <Button Grid.Column="3" Style="{StaticResource IconButton}" Content="&#xE894;" FontSize="11" Width="28" Height="28" Margin="0,0,6,0"
+                            ToolTip="Clear (Esc)" Click="OnClearClick"
+                            Visibility="{Binding Text.IsEmpty, ElementName=SearchBox, Converter={StaticResource InverseBoolToVisibility}}" />
+                </Grid>
+            </Border>
+            <StackPanel Grid.Column="1" Orientation="Horizontal" Margin="6,0,0,0">
+                <ToggleButton Style="{StaticResource PillToggle}" Content="Aa" IsChecked="{Binding MatchCase}" ToolTip="Match case" />
+                <ToggleButton Style="{StaticResource PillToggle}" Content=".*" IsChecked="{Binding UseRegex}" ToolTip="Regular expressions" FontFamily="Consolas" />
+                <ToggleButton Style="{StaticResource PillToggle}" Content="W" IsChecked="{Binding WholeWord}" ToolTip="Whole word" />
+                <ToggleButton Style="{StaticResource PillToggle}" Content="Path" IsChecked="{Binding MatchPath}" ToolTip="Match against the full path" />
+                <Button Style="{StaticResource IconButton}" Content="&#xE74E;" Height="32" Width="36" Margin="8,0,0,0" ToolTip="Export results… (Ctrl+S)" Click="OnExportClick" />
+                <ToggleButton Style="{StaticResource PillToggle}" IsChecked="{Binding FiltersVisible}" ToolTip="Show filters" Margin="3,0,0,0">
+                    <Grid>
+                        <TextBlock FontFamily="{StaticResource IconFont}" Text="&#xE71C;" FontSize="14" />
+                        <Ellipse Width="7" Height="7" Fill="{DynamicResource SystemFillColorAttentionBrush}" HorizontalAlignment="Right" VerticalAlignment="Top" Margin="0,-4,-6,0"
+                                 Visibility="{Binding HasFilters, Converter={StaticResource BoolToVisibility}}" />
+                    </Grid>
+                </ToggleButton>
+            </StackPanel>
+        </Grid>
+
+        <!-- Filter panel -->
+        <Border Grid.Row="1" Margin="0,8,0,0" CornerRadius="8" Padding="14,10,14,8"
+                Background="{DynamicResource CardBackgroundFillColorDefaultBrush}" BorderBrush="{DynamicResource CardStrokeColorDefaultBrush}" BorderThickness="1"
+                Visibility="{Binding FiltersVisible, Converter={StaticResource BoolToVisibility}}">
+            <WrapPanel>
+                <StackPanel Style="{StaticResource FilterGroup}">
+                    <TextBlock Style="{StaticResource FilterLabel}" Text="TYPE" />
+                    <ComboBox Width="110" ItemsSource="{x:Static vm:SearchTabViewModel.TypeChoices}" SelectedItem="{Binding TypeFilter}" />
+                </StackPanel>
+                <StackPanel Style="{StaticResource FilterGroup}">
+                    <TextBlock Style="{StaticResource FilterLabel}" Text="KIND" />
+                    <ComboBox Width="120" ItemsSource="{x:Static vm:SearchTabViewModel.KindChoices}" SelectedItem="{Binding KindFilter}" />
+                </StackPanel>
+                <StackPanel Style="{StaticResource FilterGroup}">
+                    <TextBlock Style="{StaticResource FilterLabel}" Text="EXTENSIONS" />
+                    <TextBox Width="140" Text="{Binding ExtensionsText, UpdateSourceTrigger=PropertyChanged, Delay=150}" ToolTip="e.g. cs;json;md" />
+                </StackPanel>
+                <StackPanel Style="{StaticResource FilterGroup}">
+                    <TextBlock Style="{StaticResource FilterLabel}" Text="SIZE" />
+                    <StackPanel Orientation="Horizontal">
+                        <TextBox Width="72" Text="{Binding MinSizeText, UpdateSourceTrigger=PropertyChanged, Delay=200}" ToolTip="Minimum, e.g. 10mb" />
+                        <TextBlock Text="–" Margin="6,0" VerticalAlignment="Center" />
+                        <TextBox Width="72" Text="{Binding MaxSizeText, UpdateSourceTrigger=PropertyChanged, Delay=200}" ToolTip="Maximum, e.g. 1gb" />
+                    </StackPanel>
+                </StackPanel>
+                <StackPanel Style="{StaticResource FilterGroup}">
+                    <TextBlock Style="{StaticResource FilterLabel}" Text="MODIFIED" />
+                    <StackPanel Orientation="Horizontal">
+                        <ComboBox Width="130" ItemsSource="{x:Static vm:SearchTabViewModel.DateChoices}" SelectedItem="{Binding DateFilter}" />
+                        <DatePicker Width="130" Margin="6,0,0,0" SelectedDate="{Binding DateFrom}" Visibility="{Binding IsCustomDate, Converter={StaticResource BoolToVisibility}}" />
+                        <DatePicker Width="130" Margin="6,0,0,0" SelectedDate="{Binding DateTo}" Visibility="{Binding IsCustomDate, Converter={StaticResource BoolToVisibility}}" />
+                    </StackPanel>
+                </StackPanel>
+                <StackPanel Style="{StaticResource FilterGroup}">
+                    <TextBlock Style="{StaticResource FilterLabel}" Text="IN FOLDER" />
+                    <StackPanel Orientation="Horizontal">
+                        <TextBox Width="260" Text="{Binding ScopeFolder, UpdateSourceTrigger=PropertyChanged, Delay=200}" ToolTip="Limit results to this folder (drop a folder here)" />
+                        <Button Style="{StaticResource IconButton}" Content="&#xE8DA;" ToolTip="Browse…" Click="OnBrowseFolderClick" />
+                    </StackPanel>
+                </StackPanel>
+                <StackPanel Style="{StaticResource FilterGroup}" VerticalAlignment="Bottom">
+                    <CheckBox Content="Hide hidden &amp; system" IsChecked="{Binding HideHiddenSystem}" Margin="0,0,0,2" />
+                </StackPanel>
+                <StackPanel Style="{StaticResource FilterGroup}" VerticalAlignment="Bottom">
+                    <Button Content="Clear filters" Command="{Binding ClearFiltersCommand}" Padding="10,4" />
+                </StackPanel>
+            </WrapPanel>
+        </Border>
+
+        <!-- Results -->
+        <Grid Grid.Row="2" Margin="0,8,0,0">
+            <DataGrid x:Name="Grid" ItemsSource="{Binding Results}" AutoGenerateColumns="False" IsReadOnly="True" CanUserAddRows="False"
+                      CanUserDeleteRows="False" CanUserReorderColumns="True" CanUserResizeColumns="True" CanUserSortColumns="True"
+                      HeadersVisibility="Column" GridLinesVisibility="None" RowHeight="28" SelectionMode="Extended" SelectionUnit="FullRow"
+                      EnableRowVirtualization="True" EnableColumnVirtualization="False"
+                      VirtualizingPanel.IsVirtualizing="True" VirtualizingPanel.VirtualizationMode="Recycling"
+                      ScrollViewer.CanContentScroll="True" ScrollViewer.IsDeferredScrollingEnabled="False"
+                      Background="Transparent" BorderThickness="0" FontSize="13"
+                      Sorting="OnSorting" MouseDoubleClick="OnRowDoubleClick" PreviewMouseLeftButtonDown="OnGridPreviewMouseLeftButtonDown"
+                      PreviewMouseLeftButtonUp="OnGridPreviewMouseLeftButtonUp" MouseMove="OnGridMouseMove" PreviewKeyDown="OnGridPreviewKeyDown"
+                      ContextMenuOpening="OnContextMenuOpening">
+                <DataGrid.Resources>
+                    <Style TargetType="DataGridRow" BasedOn="{StaticResource {x:Type DataGridRow}}">
+                        <Setter Property="Opacity" Value="{Binding IsHidden, Converter={StaticResource HiddenOpacity}}" />
+                    </Style>
+                    <Style x:Key="CellText" TargetType="TextBlock">
+                        <Setter Property="VerticalAlignment" Value="Center" />
+                        <Setter Property="TextTrimming" Value="CharacterEllipsis" />
+                    </Style>
+                    <!-- Name and Path behave like links: hand cursor + underline on hover, double-click to open -->
+                    <Style x:Key="LinkText" TargetType="TextBlock" BasedOn="{StaticResource CellText}">
+                        <Setter Property="Cursor" Value="Hand" />
+                        <Style.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter Property="TextDecorations" Value="Underline" />
+                            </Trigger>
+                        </Style.Triggers>
+                    </Style>
+                </DataGrid.Resources>
+                <DataGrid.ContextMenu>
+                    <ContextMenu>
+                        <MenuItem Header="_Open" InputGestureText="Enter" Click="OnOpenClick" FontWeight="SemiBold" />
+                        <MenuItem Header="Open _with…" Click="OnOpenWithClick" />
+                        <MenuItem Header="Open containing _folder" InputGestureText="Ctrl+Shift+E" Click="OnShowInExplorerClick" />
+                        <Separator />
+                        <MenuItem Header="_Copy" InputGestureText="Ctrl+C" Click="OnCopyFilesClick" />
+                        <MenuItem Header="Copy full _path" InputGestureText="Ctrl+Shift+C" Click="OnCopyPathClick" />
+                        <MenuItem Header="Copy _name" Click="OnCopyNameClick" />
+                        <Separator />
+                        <MenuItem Header="Search in this folder (new tab)" Click="OnSearchInFolderClick" />
+                        <Separator />
+                        <MenuItem Header="Export selected…" InputGestureText="Ctrl+Shift+S" Click="OnExportSelectedClick" />
+                        <MenuItem Header="Export all results…" InputGestureText="Ctrl+S" Click="OnExportClick" />
+                        <Separator />
+                        <MenuItem Header="P_roperties" InputGestureText="Alt+Enter" Click="OnPropertiesClick" />
+                    </ContextMenu>
+                </DataGrid.ContextMenu>
+                <DataGrid.Columns>
+                    <DataGridTemplateColumn Header="Name" Width="2.2*" SortMemberPath="Name" MinWidth="160">
+                        <DataGridTemplateColumn.CellTemplate>
+                            <DataTemplate>
+                                <StackPanel Orientation="Horizontal" Margin="4,0,0,0">
+                                    <Image Source="{Binding Icon}" Width="16" Height="16" Margin="0,0,8,0" VerticalAlignment="Center" />
+                                    <TextBlock Text="{Binding Name}" Style="{StaticResource LinkText}" ToolTip="Double-click to open" />
+                                </StackPanel>
+                            </DataTemplate>
+                        </DataGridTemplateColumn.CellTemplate>
+                    </DataGridTemplateColumn>
+                    <DataGridTextColumn Header="Path" Binding="{Binding Directory}" Width="3*" SortMemberPath="Path" MinWidth="160">
+                        <DataGridTextColumn.ElementStyle>
+                            <Style TargetType="TextBlock" BasedOn="{StaticResource LinkText}">
+                                <Setter Property="Foreground" Value="{DynamicResource TextFillColorSecondaryBrush}" />
+                                <Setter Property="ToolTip" Value="Double-click to open this folder" />
+                            </Style>
+                        </DataGridTextColumn.ElementStyle>
+                    </DataGridTextColumn>
+                    <DataGridTextColumn Header="Size" Binding="{Binding SizeText}" Width="90" SortMemberPath="Size">
+                        <DataGridTextColumn.ElementStyle>
+                            <Style TargetType="TextBlock">
+                                <Setter Property="HorizontalAlignment" Value="Right" />
+                                <Setter Property="Margin" Value="0,0,10,0" />
+                                <Setter Property="VerticalAlignment" Value="Center" />
+                            </Style>
+                        </DataGridTextColumn.ElementStyle>
+                    </DataGridTextColumn>
+                    <DataGridTextColumn Header="Date modified" Binding="{Binding Modified, Converter={StaticResource DateTimeConverter}}" Width="140" SortMemberPath="Modified" ElementStyle="{StaticResource CellText}" />
+                    <DataGridTextColumn x:Name="CreatedColumn" Header="Date created" Binding="{Binding Created, Converter={StaticResource DateTimeConverter}}" Width="140" SortMemberPath="Created" Visibility="Collapsed" ElementStyle="{StaticResource CellText}" />
+                    <DataGridTextColumn Header="Type" Binding="{Binding TypeText}" Width="80" SortMemberPath="Extension" ElementStyle="{StaticResource CellText}" />
+                </DataGrid.Columns>
+            </DataGrid>
+
+            <!-- Empty state -->
+            <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center" IsHitTestVisible="False"
+                        Visibility="{Binding Results.Count, Converter={StaticResource NullToVisibility}, ConverterParameter=zero}" x:Name="EmptyState">
+                <TextBlock FontFamily="{StaticResource IconFont}" Text="&#xE721;" FontSize="40" HorizontalAlignment="Center" Foreground="{DynamicResource TextFillColorTertiaryBrush}" />
+                <TextBlock Text="No matches" FontSize="16" Margin="0,10,0,2" HorizontalAlignment="Center" Foreground="{DynamicResource TextFillColorSecondaryBrush}" />
+                <TextBlock Text="{Binding ErrorText}" FontSize="12" HorizontalAlignment="Center" Foreground="{DynamicResource SystemFillColorCriticalBrush}" />
+            </StackPanel>
+        </Grid>
+    </Grid>
+</UserControl>

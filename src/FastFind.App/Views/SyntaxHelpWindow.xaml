@@ -1,0 +1,112 @@
+<Window x:Class="FastFind.App.Views.SyntaxHelpWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Search syntax" Width="640" Height="640" WindowStartupLocation="CenterOwner"
+        FontFamily="{StaticResource UiFont}" ShowInTaskbar="False">
+    <Window.Resources>
+        <Style x:Key="Code" TargetType="TextBlock">
+            <Setter Property="FontFamily" Value="Cascadia Mono, Consolas" />
+            <Setter Property="FontSize" Value="13" />
+            <Setter Property="Margin" Value="0,3,16,3" />
+            <Setter Property="Foreground" Value="{DynamicResource AccentTextFillColorPrimaryBrush}" />
+        </Style>
+        <Style x:Key="Desc" TargetType="TextBlock">
+            <Setter Property="FontSize" Value="13" />
+            <Setter Property="Margin" Value="0,3,0,3" />
+            <Setter Property="TextWrapping" Value="Wrap" />
+        </Style>
+        <Style x:Key="H" TargetType="TextBlock">
+            <Setter Property="FontSize" Value="15" />
+            <Setter Property="FontWeight" Value="SemiBold" />
+            <Setter Property="Margin" Value="0,16,0,6" />
+        </Style>
+    </Window.Resources>
+    <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="22,10,22,20">
+        <StackPanel>
+            <TextBlock Style="{StaticResource H}" Text="Basics" Margin="0,6,0,6" />
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto" /><ColumnDefinition Width="*" />
+                </Grid.ColumnDefinitions>
+                <Grid.RowDefinitions>
+                    <RowDefinition /><RowDefinition /><RowDefinition /><RowDefinition /><RowDefinition /><RowDefinition />
+                </Grid.RowDefinitions>
+                <TextBlock Style="{StaticResource Code}" Text="report budget" />
+                <TextBlock Style="{StaticResource Desc}" Grid.Column="1" Text="Space means AND: names containing both words, in any order." />
+                <TextBlock Style="{StaticResource Code}" Grid.Row="1" Text="*.jpg|*.png" />
+                <TextBlock Style="{StaticResource Desc}" Grid.Row="1" Grid.Column="1" Text="| means OR. OR binds tighter than AND, so  photo *.jpg|*.png  = photo AND (jpg OR png)." />
+                <TextBlock Style="{StaticResource Code}" Grid.Row="2" Text="!backup" />
+                <TextBlock Style="{StaticResource Desc}" Grid.Row="2" Grid.Column="1" Text="! excludes. Works before any term or function, e.g.  !ext:tmp" />
+                <TextBlock Style="{StaticResource Code}" Grid.Row="3" Text="&quot;final draft&quot;" />
+                <TextBlock Style="{StaticResource Desc}" Grid.Row="3" Grid.Column="1" Text="Quotes keep spaces inside one term." />
+                <TextBlock Style="{StaticResource Code}" Grid.Row="4" Text="inv*2024.pdf   ?.txt" />
+                <TextBlock Style="{StaticResource Desc}" Grid.Row="4" Grid.Column="1" Text="* matches any run of characters, ? exactly one. A wildcard term must match the whole name." />
+                <TextBlock Style="{StaticResource Code}" Grid.Row="5" Text="Aa  .*  W  Path" />
+                <TextBlock Style="{StaticResource Desc}" Grid.Row="5" Grid.Column="1" Text="Toolbar toggles: match case, regular expressions, whole word, and matching against the full path instead of the name." />
+            </Grid>
+
+            <TextBlock Style="{StaticResource H}" Text="Functions" />
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto" /><ColumnDefinition Width="*" />
+                </Grid.ColumnDefinitions>
+                <Grid.RowDefinitions>
+                    <RowDefinition /><RowDefinition /><RowDefinition /><RowDefinition /><RowDefinition /><RowDefinition />
+                    <RowDefinition /><RowDefinition /><RowDefinition /><RowDefinition /><RowDefinition /><RowDefinition /><RowDefinition />
+                </Grid.RowDefinitions>
+                <TextBlock Style="{StaticResource Code}" Grid.Row="0" Text="ext:pdf;docx" />
+                <TextBlock Style="{StaticResource Desc}" Grid.Row="0" Grid.Column="1" Text="File extension (separate several with ; or ,)." />
+                <TextBlock Style="{StaticResource Code}" Grid.Row="1" Text="size:&gt;10mb   size:1mb..5mb" />
+                <TextBlock Style="{StaticResource Desc}" Grid.Row="1" Grid.Column="1" Text="Size: &gt; &lt; &gt;= &lt;= = or a range. Units kb mb gb tb. Also  size:empty tiny small medium large huge gigantic." />
+                <TextBlock Style="{StaticResource Code}" Grid.Row="2" Text="dm:today   dm:last7days" />
+                <TextBlock Style="{StaticResource Desc}" Grid.Row="2" Grid.Column="1" Text="Date modified: today, yesterday, thisweek, lastweek, thismonth, lastmonth, thisyear, lastyear, lastNdays/weeks/months/years/hours." />
+                <TextBlock Style="{StaticResource Code}" Grid.Row="3" Text="dm:2024   dm:2024-05   dm:&gt;2024-05-01" />
+                <TextBlock Style="{StaticResource Desc}" Grid.Row="3" Grid.Column="1" Text="A year, a month, a day, comparisons, or a range  dm:2024-01-01..2024-03-31." />
+                <TextBlock Style="{StaticResource Code}" Grid.Row="4" Text="dc:thisweek" />
+                <TextBlock Style="{StaticResource Desc}" Grid.Row="4" Grid.Column="1" Text="Date created, same syntax as dm:." />
+                <TextBlock Style="{StaticResource Code}" Grid.Row="5" Text="path:source\FastFind" />
+                <TextBlock Style="{StaticResource Desc}" Grid.Row="5" Grid.Column="1" Text="Match text anywhere in the full path." />
+                <TextBlock Style="{StaticResource Code}" Grid.Row="6" Text="infolder:C:\Users\joe" />
+                <TextBlock Style="{StaticResource Desc}" Grid.Row="6" Grid.Column="1" Text="Only results under that folder (recursive). parent: limits to the folder itself." />
+                <TextBlock Style="{StaticResource Code}" Grid.Row="7" Text="folder:   file:" />
+                <TextBlock Style="{StaticResource Desc}" Grid.Row="7" Grid.Column="1" Text="Only folders / only files. folder:build limits the name match to folders." />
+                <TextBlock Style="{StaticResource Code}" Grid.Row="8" Text="type:images" />
+                <TextBlock Style="{StaticResource Desc}" Grid.Row="8" Grid.Column="1" Text="Kinds: documents, images, audio, video, archives, executables, code." />
+                <TextBlock Style="{StaticResource Code}" Grid.Row="9" Text="regex:^inv_\d{4}" />
+                <TextBlock Style="{StaticResource Desc}" Grid.Row="9" Grid.Column="1" Text=".NET regular expression on the name." />
+                <TextBlock Style="{StaticResource Code}" Grid.Row="10" Text="case:README   wfn:notes.txt" />
+                <TextBlock Style="{StaticResource Desc}" Grid.Row="10" Grid.Column="1" Text="case: forces case sensitivity for that term. wfn: matches the whole file name exactly." />
+                <TextBlock Style="{StaticResource Code}" Grid.Row="11" Text="attrib:h   empty:" />
+                <TextBlock Style="{StaticResource Desc}" Grid.Row="11" Grid.Column="1" Text="Attributes h s r a c e l t. empty: finds zero-byte files." />
+                <TextBlock Style="{StaticResource Code}" Grid.Row="12" Text="ext:log size:&gt;50mb dm:lastweek" />
+                <TextBlock Style="{StaticResource Desc}" Grid.Row="12" Grid.Column="1" Text="Combine freely. The filter panel adds the same constraints without typing." />
+            </Grid>
+
+            <TextBlock Style="{StaticResource H}" Text="Keyboard" />
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto" /><ColumnDefinition Width="*" />
+                </Grid.ColumnDefinitions>
+                <Grid.RowDefinitions>
+                    <RowDefinition /><RowDefinition /><RowDefinition /><RowDefinition /><RowDefinition /><RowDefinition /><RowDefinition /><RowDefinition />
+                </Grid.RowDefinitions>
+                <TextBlock Style="{StaticResource Code}" Grid.Row="0" Text="Ctrl+T / Ctrl+W / Ctrl+Tab" />
+                <TextBlock Style="{StaticResource Desc}" Grid.Row="0" Grid.Column="1" Text="New tab, close tab, switch tabs. Middle-click a tab to close it." />
+                <TextBlock Style="{StaticResource Code}" Grid.Row="1" Text="Enter / Alt+Enter" />
+                <TextBlock Style="{StaticResource Desc}" Grid.Row="1" Grid.Column="1" Text="Open the selected item / show its Properties." />
+                <TextBlock Style="{StaticResource Code}" Grid.Row="2" Text="Ctrl+C / Ctrl+Shift+C" />
+                <TextBlock Style="{StaticResource Desc}" Grid.Row="2" Grid.Column="1" Text="Copy the files (paste into Explorer) / copy the full paths as text." />
+                <TextBlock Style="{StaticResource Code}" Grid.Row="3" Text="Ctrl+Shift+E" />
+                <TextBlock Style="{StaticResource Desc}" Grid.Row="3" Grid.Column="1" Text="Reveal in Explorer." />
+                <TextBlock Style="{StaticResource Code}" Grid.Row="4" Text="Drag &amp; drop" />
+                <TextBlock Style="{StaticResource Desc}" Grid.Row="4" Grid.Column="1" Text="Drag results out to Explorer, e-mail or any app. Drop a folder onto the window to search inside it." />
+                <TextBlock Style="{StaticResource Code}" Grid.Row="5" Text="F5" />
+                <TextBlock Style="{StaticResource Desc}" Grid.Row="5" Grid.Column="1" Text="Rebuild the index." />
+                <TextBlock Style="{StaticResource Code}" Grid.Row="6" Text="Ctrl+S / Ctrl+Shift+S" />
+                <TextBlock Style="{StaticResource Desc}" Grid.Row="6" Grid.Column="1" Text="Export all results / the selection as CSV, a list of paths, or an Everything .efu file list." />
+                <TextBlock Style="{StaticResource Code}" Grid.Row="7" Text="Ctrl+Alt+F (global)" />
+                <TextBlock Style="{StaticResource Desc}" Grid.Row="7" Grid.Column="1" Text="Show or hide FastFind from anywhere. Change it in Settings. Closing the window keeps FastFind in the tray; Ctrl+Q exits." />
+            </Grid>
+        </StackPanel>
+    </ScrollViewer>
+</Window>

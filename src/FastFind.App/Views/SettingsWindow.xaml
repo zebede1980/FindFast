@@ -1,0 +1,75 @@
+<Window x:Class="FastFind.App.Views.SettingsWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Settings and index" Width="720" Height="560" WindowStartupLocation="CenterOwner"
+        FontFamily="{StaticResource UiFont}" ShowInTaskbar="False" ResizeMode="CanResize">
+    <Window.Resources>
+        <Style x:Key="H" TargetType="TextBlock">
+            <Setter Property="FontSize" Value="15" />
+            <Setter Property="FontWeight" Value="SemiBold" />
+            <Setter Property="Margin" Value="0,14,0,8" />
+        </Style>
+    </Window.Resources>
+    <Grid Margin="22,8,22,16">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+            <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
+
+        <TextBlock Style="{StaticResource H}" Text="Appearance" Margin="0,6,0,8" />
+        <StackPanel Grid.Row="1" Orientation="Horizontal">
+            <TextBlock Text="Theme" VerticalAlignment="Center" Margin="0,0,10,0" />
+            <ComboBox x:Name="ThemeBox" Width="140" SelectionChanged="OnThemeChanged">
+                <ComboBoxItem Content="Follow Windows" Tag="System" />
+                <ComboBoxItem Content="Light" Tag="Light" />
+                <ComboBoxItem Content="Dark" Tag="Dark" />
+            </ComboBox>
+            <CheckBox x:Name="CreatedColumnBox" Content="Show 'Date created' column" Margin="24,0,0,0" VerticalAlignment="Center" Checked="OnOptionChanged" Unchecked="OnOptionChanged" />
+        </StackPanel>
+        <StackPanel Grid.Row="2" Orientation="Horizontal" Margin="0,10,0,0">
+            <TextBlock Text="Global hotkey" VerticalAlignment="Center" Margin="0,0,10,0" />
+            <TextBox x:Name="HotkeyBox" Width="140" ToolTip="e.g. Ctrl+Alt+F, Win+Space, Ctrl+Shift+F12. Leave empty to disable." LostFocus="OnHotkeyChanged" KeyDown="OnHotkeyKeyDown" />
+            <TextBlock x:Name="HotkeyError" Margin="10,0,0,0" VerticalAlignment="Center" FontSize="12" Foreground="{DynamicResource SystemFillColorCriticalBrush}" />
+            <CheckBox x:Name="TrayBox" Content="Keep running in the tray when the window is closed" Margin="24,0,0,0" VerticalAlignment="Center" Checked="OnOptionChanged" Unchecked="OnOptionChanged" />
+        </StackPanel>
+
+        <StackPanel Grid.Row="3">
+            <TextBlock Style="{StaticResource H}" Text="Volumes" />
+            <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
+                <CheckBox x:Name="RemovableBox" Content="Index removable drives (USB)" Checked="OnOptionChanged" Unchecked="OnOptionChanged" />
+                <CheckBox x:Name="NetworkBox" Content="Index mapped network drives (slow)" Margin="20,0,0,0" Checked="OnOptionChanged" Unchecked="OnOptionChanged" />
+            </StackPanel>
+            <TextBlock x:Name="ElevationText" FontSize="12" Foreground="{DynamicResource TextFillColorSecondaryBrush}" TextWrapping="Wrap" Margin="0,0,0,6" />
+        </StackPanel>
+
+        <DataGrid x:Name="VolumeGrid" Grid.Row="4" AutoGenerateColumns="False" IsReadOnly="True" CanUserAddRows="False" HeadersVisibility="Column"
+                  GridLinesVisibility="None" SelectionMode="Single" RowHeight="30" FontSize="13" BorderThickness="0" Background="Transparent">
+            <DataGrid.Columns>
+                <DataGridTextColumn Header="Drive" Binding="{Binding Root}" Width="60" />
+                <DataGridTextColumn Header="Label" Binding="{Binding Label}" Width="120" />
+                <DataGridTextColumn Header="Format" Binding="{Binding Format}" Width="70" />
+                <DataGridTextColumn Header="Status" Binding="{Binding Status}" Width="80" />
+                <DataGridTextColumn Header="Items" Binding="{Binding Entries, StringFormat=N0}" Width="100">
+                    <DataGridTextColumn.ElementStyle>
+                        <Style TargetType="TextBlock"><Setter Property="HorizontalAlignment" Value="Right" /><Setter Property="Margin" Value="0,0,8,0" /></Style>
+                    </DataGridTextColumn.ElementStyle>
+                </DataGridTextColumn>
+                <DataGridTextColumn Header="Method" Binding="{Binding Mode}" Width="110" />
+                <DataGridTextColumn Header="Build" Binding="{Binding BuildTime, StringFormat=mm\\:ss}" Width="60" />
+                <DataGridTextColumn Header="Detail" Binding="{Binding ProgressText}" Width="*" />
+            </DataGrid.Columns>
+        </DataGrid>
+
+        <DockPanel Grid.Row="5" Margin="0,12,0,0">
+            <Button DockPanel.Dock="Right" Content="Close" Width="90" Click="OnCloseClick" IsDefault="True" IsCancel="True" />
+            <Button DockPanel.Dock="Right" Content="Run as administrator" Margin="0,0,8,0" Padding="10,4" Click="OnElevateClick" x:Name="ElevateButton" />
+            <Button DockPanel.Dock="Left" Content="Rebuild all indexes" Padding="10,4" Click="OnRebuildClick" />
+            <Button DockPanel.Dock="Left" Content="Rebuild selected" Margin="8,0,0,0" Padding="10,4" Click="OnRebuildSelectedClick" />
+            <TextBlock x:Name="LogPathText" VerticalAlignment="Center" Margin="16,0,0,0" FontSize="11" Foreground="{DynamicResource TextFillColorTertiaryBrush}" />
+        </DockPanel>
+    </Grid>
+</Window>
