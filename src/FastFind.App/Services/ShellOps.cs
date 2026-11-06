@@ -1,6 +1,7 @@
 using System.Diagnostics;
 using System.Runtime.InteropServices;
 using System.Windows;
+using System.Windows.Interop;
 
 namespace FastFind.App.Services;
 
@@ -13,11 +14,11 @@ public static class ShellOps
         catch (Exception ex) { Logger.Warn($"Open failed for {path}: {ex.Message}"); }
     }
 
-    public static void OpenWith(string path)
-    {
-        try { Process.Start(new ProcessStartInfo("rundll32.exe", $"shell32.dll,OpenAs_RunDLL \"{path}\"") { UseShellExecute = true }); }
-        catch (Exception ex) { Logger.Warn($"Open-with failed for {path}: {ex.Message}"); }
-    }
+    /// <summary>
+    /// Shows the "How do you want to open this file?" dialog via the shell "openas" verb.
+    /// The old rundll32 OpenAs_RunDLL entry point silently does nothing on current Windows 11 builds.
+    /// </summary>
+    public static void OpenWith(string path) => InvokeVerb("openas", path);
 
     public static void ShowInExplorer(string path)
     {
@@ -84,17 +85,32 @@ public static class ShellOps
     private const uint SEE_MASK_INVOKEIDLIST = 0x0000000C;
     private const uint SEE_MASK_NOASYNC = 0x00000100;
 
-    public static void ShowProperties(string path)
+    public static void ShowProperties(string path) => InvokeVerb("properties", path);
+
+    /// <summary>Runs a shell verb on a file, owned by the main window so any dialog comes to the front.</summary>
+    private static void InvokeVerb(string verb, string path)
     {
         var info = new SHELLEXECUTEINFO
         {
             cbSize = Marshal.SizeOf<SHELLEXECUTEINFO>(),
             fMask = SEE_MASK_INVOKEIDLIST | SEE_MASK_NOASYNC,
-            lpVerb = "properties",
+            hwnd = OwnerHandle(),
+            lpVerb = verb,
             lpFile = path,
             nShow = 5,
         };
-        ShellExecuteExW(ref info);
+        if (!ShellExecuteExW(ref info))
+            Logger.Warn($"Shell verb '{verb}' failed for {path}: Win32 error {Marshal.GetLastWin32Error()}");
+    }
+
+    private static IntPtr OwnerHandle()
+    {
+        try
+        {
+            var window = Application.Current?.MainWindow;
+            return window is null ? IntPtr.Zero : new WindowInteropHelper(window).Handle;
+        }
+        catch { return IntPtr.Zero; }
     }
 
     public static void RestartElevated()
