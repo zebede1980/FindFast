@@ -81,6 +81,17 @@ FastFind.Service.exe  (elevated: reads the MFT, follows the USN change journal, 
 * When the service is installed by the same account that uses it, it runs as that user and can reach their network
   shares. When a separate administrator account installs it, it runs as SYSTEM and indexes local volumes only.
 
+### When .NET is updated underneath it
+
+A Windows or Visual Studio update can install a new .NET runtime and delete the one FastFind is running on. What a
+program has already loaded keeps working, but anything it has not used yet (a right-click menu, say) then fails until
+the program is restarted. Both processes check for this every 30 seconds:
+
+* The **window** asks whether to restart now. Tabs and layout are kept. If it is hidden in the tray, it asks when it
+  is next shown. Say No while a copy or move is running and restart afterwards.
+* The **index service** restarts itself straight away, keeping its administrator rights; the window reconnects within
+  a second or so.
+
 ### Using the index from scripts and other tools
 
 The same pipe is available to anything else. The quickest way is the CLI:

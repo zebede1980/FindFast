@@ -240,6 +240,23 @@ public sealed class FileServiceTests : IDisposable
     }
 
     [Fact]
+    public void RestartArgumentIsTakenOutOfTheCommandLine()
+    {
+        // "--wait-for <pid>" is how a restarting instance tells its replacement to wait; it must not be mistaken for a folder to open.
+        var args = new List<string> { "--wait-for", "4242", @"C:\Windows" };
+        Assert.Equal(4242, FastFind.App.App.TakeWaitForPid(args));
+        Assert.Equal(new[] { @"C:\Windows" }, args);
+
+        args = new List<string> { @"C:\Windows" };
+        Assert.Null(FastFind.App.App.TakeWaitForPid(args));
+        Assert.Single(args);
+
+        args = new List<string> { "--wait-for" }; // malformed: dropped, nothing to wait for
+        Assert.Null(FastFind.App.App.TakeWaitForPid(args));
+        Assert.Empty(args);
+    }
+
+    [Fact]
     public void DraggedFilesUseTheShellsDataObject() => Ui.Run(() =>
     {
         // Two files in different folders, as a search result would give.

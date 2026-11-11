@@ -6,7 +6,7 @@ using FastFind.Core.Native;
 // FastFind.Service: owns the file index in an elevated background process and serves it over a named pipe, so the
 // FastFind window (and anything else) can search instantly without itself running as administrator.
 //
-//   FastFind.Service.exe run [--user SID]        host the index (what the scheduled task runs)
+//   FastFind.Service.exe run [--user SID] [--data FOLDER]   host the index (what the scheduled task runs)
 //   FastFind.Service.exe install --user SID      register + start the scheduled task (needs elevation)
 //   FastFind.Service.exe uninstall --user SID    stop + remove the scheduled task (needs elevation)
 //
@@ -16,9 +16,10 @@ namespace FastFind.Service;
 
 internal static class Program
 {
-    private static readonly string DataDirectory = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "FastFind");
-    private static readonly string LogPath = Path.Combine(DataDirectory, "service.log");
-    private static readonly string SettingsPath = Path.Combine(DataDirectory, "service-index.json");
+    /// <summary>Where the log, settings and index cache live. "--data FOLDER" moves them, so a second copy can run side by side (for testing) without touching the real one's files.</summary>
+    private static string DataDirectory = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "FastFind");
+    private static string LogPath => Path.Combine(DataDirectory, "service.log");
+    private static string SettingsPath => Path.Combine(DataDirectory, "service-index.json");
     private static readonly object LogGate = new();
 
     private static int Main(string[] args)
@@ -26,14 +27,22 @@ internal static class Program
         string command = args.Length > 0 && !args[0].StartsWith("--") ? args[0].ToLowerInvariant() : "run";
         string userSid = PipeProtocol.CurrentUserSid();
         for (int i = 0; i < args.Length - 1; i++)
+        {
             if (args[i] == "--user") userSid = args[i + 1];
+            else if (args[i] == "--data") DataDirectory = Path.GetFullPath(args[i + 1]);
+        }
 
         try
         {
             switch (command)
             {
                 case "run":
-                    return Run(userSid);
+                    try { return Run(userSid); }
+                    finally
+                    {
+                        // By now Run has let go of its mutex and pipe, whether it ended cleanly or not, so a fresh copy can take over.
+                        if (_restartRequested) RestartSelf(args);
+                    }
                 case "install":
                 {
                     string exe = Environment.ProcessPath ?? Path.Combine(AppContext.BaseDirectory, ServiceInstaller.ExeName);
@@ -80,10 +89,34 @@ internal static class Program
         manager.Start();
 
         using var stop = new ManualResetEventSlim();
-        AppDomain.CurrentDomain.ProcessExit += (_, _) => stop.Set();
+        AppDomain.CurrentDomain.ProcessExit += (_, _) => { try { stop.Set(); } catch (ObjectDisposedException) { } };
+
+        // An update can remove the .NET runtime this process started on; it then fails piecemeal. Start again on the new one.
+        using var guard = new RuntimeGuard();
+        guard.Replaced += missing =>
+        {
+            Log($"The .NET runtime this service started on has been removed ({missing} is gone); restarting on the current one");
+            _restartRequested = true;
+            stop.Set();
+        };
+        guard.Start();
+
         stop.Wait();
         Log("Index service stopping");
         return 0;
+    }
+
+    private static volatile bool _restartRequested;
+
+    /// <summary>Starts a fresh copy of the service (which keeps this one's elevation) and ends this process.</summary>
+    private static void RestartSelf(string[] args)
+    {
+        string exe = Environment.ProcessPath ?? Path.Combine(AppContext.BaseDirectory, ServiceInstaller.ExeName);
+        string arguments = string.Join(" ", args.Select(a => a.Contains(' ') ? $"\"{a}\"" : a));
+        if (RuntimeGuard.Relaunch(exe, arguments, out string? error)) Log("Started the replacement service");
+        else Log($"Could not start the replacement service: {error}. The FastFind window starts it again when it next needs it.");
+        // Leave at once, even if something is still running: the replacement needs the way clear.
+        Environment.Exit(0);
     }
 
     private static IndexSettings? LoadSettings()
