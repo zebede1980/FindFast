@@ -2,6 +2,7 @@ using System.Windows;
 using System.Windows.Controls;
 using FastFind.App.Services;
 using FastFind.App.ViewModels;
+using FastFind.Core.Api;
 using FastFind.Core.Indexing;
 
 namespace FastFind.App.Views;
@@ -19,26 +20,73 @@ public partial class SettingsWindow : Window
         foreach (ComboBoxItem item in ThemeBox.Items)
             if ((string)item.Tag == s.Theme) ThemeBox.SelectedItem = item;
         if (ThemeBox.SelectedItem == null) ThemeBox.SelectedIndex = 0;
-        CreatedColumnBox.IsChecked = s.ShowCreatedColumn;
+        FolderSizesBox.IsChecked = s.ShowFolderSizes;
+        HideHiddenBox.IsChecked = s.HideHiddenSystemByDefault;
+        ConfirmRecycleBox.IsChecked = s.ConfirmRecycle;
         RemovableBox.IsChecked = s.IncludeRemovable;
         NetworkBox.IsChecked = s.IncludeNetwork;
         TrayBox.IsChecked = s.MinimizeToTray;
         HotkeyBox.Text = s.Hotkey;
         SingleInstanceBox.IsChecked = s.SingleInstance;
+        ExplorerMenuBox.IsChecked = ExplorerIntegration.IsRegistered;
         RescanHoursBox.Text = s.NetworkRescanHours.ToString("0.##");
         foreach (var p in s.NetworkLocations) NetworkList.Items.Add(p);
         VolumeGrid.ItemsSource = _vm.Volumes;
-        ElevationText.Text = vm.IsElevated
-            ? "Running as administrator: NTFS volumes are read straight from the Master File Table and kept live via the USN change journal."
-            : "Running without administrator rights: volumes are scanned folder by folder and watched with FileSystemWatcher. The scan result is cached so later launches start instantly.";
-        ElevateButton.Visibility = vm.IsElevated ? Visibility.Collapsed : Visibility.Visible;
         LogPathText.Text = Logger.FilePath;
+        UpdateServiceState();
         _loading = false;
-        _vm.Manager.VolumesChanged += OnVolumesChanged;
-        Closed += (_, _) => _vm.Manager.VolumesChanged -= OnVolumesChanged;
+        App.Index.SourceChanged += OnSourceChanged;
+        Closed += (_, _) => App.Index.SourceChanged -= OnSourceChanged;
     }
 
-    private void OnVolumesChanged() => Dispatcher.BeginInvoke(() => VolumeGrid.Items.Refresh());
+    private void OnSourceChanged() => Dispatcher.BeginInvoke(UpdateServiceState);
+
+    /// <summary>Explains where the index lives right now and offers the matching action.</summary>
+    private void UpdateServiceState()
+    {
+        var index = App.Index;
+        if (index.IsRemote)
+        {
+            ElevationText.Text = index.IsElevated
+                ? "The index service is running. NTFS volumes are read straight from the Master File Table and kept live from the change journal, while this window runs without administrator rights."
+                : "The index service is running, but without administrator rights, so it scans folder by folder.";
+            ServiceButton.Content = "Remove index service";
+            ServiceButton.Visibility = Visibility.Visible;
+        }
+        else if (index.IsElevated)
+        {
+            ElevationText.Text = "This window is running as administrator, so it reads the NTFS Master File Table itself. Files opened from here also run as administrator; "
+                                 + "installing the index service lets you run FastFind normally and keep the fast index.";
+            ServiceButton.Content = "Install index service";
+            ServiceButton.Visibility = index.ServiceAvailable ? Visibility.Visible : Visibility.Collapsed;
+        }
+        else
+        {
+            ElevationText.Text = "The index is built by scanning folders, which takes minutes on a large drive (the result is cached, so later launches start instantly). "
+                                 + "Installing the index service (one administrator prompt) reads the NTFS file table instead: seconds to build, and always up to date.";
+            ServiceButton.Content = "Install index service";
+            ServiceButton.Visibility = index.ServiceAvailable ? Visibility.Visible : Visibility.Collapsed;
+        }
+        ServiceButton.IsEnabled = true;
+    }
+
+    private void OnServiceClick(object sender, RoutedEventArgs e)
+    {
+        ServiceButton.IsEnabled = false;
+        if (App.Index.IsRemote)
+        {
+            Task.Run(App.Index.UninstallService).ContinueWith(t =>
+            {
+                string? error = t.IsFaulted ? t.Exception?.GetBaseException().Message : t.Result;
+                if (error != null && error != "Cancelled.") MessageBox.Show(this, error, "Index service", MessageBoxButton.OK, MessageBoxImage.Warning);
+                UpdateServiceState();
+            }, TaskScheduler.FromCurrentSynchronizationContext());
+        }
+        else
+        {
+            MainWindow.EnableService(this, UpdateServiceState);
+        }
+    }
 
     private void OnThemeChanged(object sender, SelectionChangedEventArgs e)
     {
@@ -52,22 +100,24 @@ public partial class SettingsWindow : Window
     {
         if (_loading) return;
         var s = App.Settings;
-        s.ShowCreatedColumn = CreatedColumnBox.IsChecked == true;
+        bool sizesChanged = s.ShowFolderSizes != (FolderSizesBox.IsChecked == true);
+        s.ShowFolderSizes = FolderSizesBox.IsChecked == true;
+        s.HideHiddenSystemByDefault = HideHiddenBox.IsChecked == true;
+        s.ConfirmRecycle = ConfirmRecycleBox.IsChecked == true;
         s.IncludeRemovable = RemovableBox.IsChecked == true;
         s.IncludeNetwork = NetworkBox.IsChecked == true;
         s.MinimizeToTray = TrayBox.IsChecked == true;
         s.SingleInstance = SingleInstanceBox.IsChecked == true;
         s.Save();
-        _vm.Manager.Options.IncludeRemovable = s.IncludeRemovable;
-        _vm.Manager.Options.IncludeNetwork = s.IncludeNetwork;
-        _ = _vm.Manager.RefreshVolumesAsync();
-        if (Owner is MainWindow main && MainWindow.FindVisualChild<SearchTabView>(main) is { } view)
-            view.CreatedColumn.Visibility = s.ShowCreatedColumn ? Visibility.Visible : Visibility.Collapsed;
-        if (s.Columns.Count > 0)
-        {
-            var created = s.Columns.FirstOrDefault(c => c.Key == "Date created");
-            if (created != null) { created.Visible = s.ShowCreatedColumn; s.Save(); }
-        }
+        App.Index.Configure(App.IndexSettingsFrom(s));
+        if (sizesChanged) _vm.RefreshFolderViews();
+    }
+
+    private void OnExplorerMenuChanged(object sender, RoutedEventArgs e)
+    {
+        if (_loading) return;
+        string? error = ExplorerMenuBox.IsChecked == true ? ExplorerIntegration.Register() : ExplorerIntegration.Unregister();
+        if (error != null) MessageBox.Show(this, error, "Windows integration", MessageBoxButton.OK, MessageBoxImage.Warning);
     }
 
     private void OnHotkeyKeyDown(object sender, System.Windows.Input.KeyEventArgs e)
@@ -115,7 +165,6 @@ public partial class SettingsWindow : Window
         if (NetworkList.SelectedItem is not string root) return;
         NetworkList.Items.Remove(root);
         SaveNetworkLocations();
-        _ = _vm.Manager.RefreshVolumesAsync(); // drops the volume on the next discovery pass
     }
 
     private void SaveNetworkLocations()
@@ -123,9 +172,8 @@ public partial class SettingsWindow : Window
         var s = App.Settings;
         s.NetworkLocations = NetworkList.Items.Cast<string>().ToList();
         s.Save();
-        _vm.Manager.Options.NetworkLocations.Clear();
-        _vm.Manager.Options.NetworkLocations.AddRange(s.NetworkLocations);
-        _ = _vm.Manager.RefreshVolumesAsync();
+        App.Index.Configure(App.IndexSettingsFrom(s)); // the index adds or drops the volume on its next discovery pass
+        _vm.RefreshSidebar();
     }
 
     private void OnRescanHoursChanged(object sender, RoutedEventArgs e)
@@ -134,21 +182,20 @@ public partial class SettingsWindow : Window
         if (!double.TryParse(RescanHoursBox.Text, out double hours) || hours <= 0) { RescanHoursBox.Text = App.Settings.NetworkRescanHours.ToString("0.##"); return; }
         App.Settings.NetworkRescanHours = hours;
         App.Settings.Save();
-        _vm.Manager.Options.NetworkRescanInterval = TimeSpan.FromHours(Math.Clamp(hours, 0.25, 24 * 30));
+        App.Index.Configure(App.IndexSettingsFrom(App.Settings));
     }
 
     private void OnRescanNetworkClick(object sender, RoutedEventArgs e)
     {
-        foreach (var v in _vm.Manager.Volumes.Where(v => v.IsNetwork)) _ = _vm.Manager.RebuildAsync(v.Root);
+        foreach (var v in App.Index.Volumes.Where(v => v.IsNetwork)) App.Index.Rebuild(v.Root);
     }
 
-    private void OnRebuildClick(object sender, RoutedEventArgs e) => _ = _vm.Manager.RebuildAllAsync();
+    private void OnRebuildClick(object sender, RoutedEventArgs e) => App.Index.Rebuild(null);
 
     private void OnRebuildSelectedClick(object sender, RoutedEventArgs e)
     {
-        if (VolumeGrid.SelectedItem is VolumeState v) _ = _vm.Manager.RebuildAsync(v.Root);
+        if (VolumeGrid.SelectedItem is VolumeInfo v) App.Index.Rebuild(v.Root);
     }
 
-    private void OnElevateClick(object sender, RoutedEventArgs e) => ShellOps.RestartElevated();
     private void OnCloseClick(object sender, RoutedEventArgs e) => Close();
 }

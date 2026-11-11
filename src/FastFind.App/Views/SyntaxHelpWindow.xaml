@@ -1,7 +1,7 @@
 <Window x:Class="FastFind.App.Views.SyntaxHelpWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        Title="Search syntax" Width="640" Height="640" WindowStartupLocation="CenterOwner"
+        Title="Shortcuts and search syntax" Width="700" Height="760" WindowStartupLocation="CenterOwner"
         FontFamily="{StaticResource UiFont}" ShowInTaskbar="False">
     <Window.Resources>
         <Style x:Key="Code" TargetType="TextBlock">
@@ -23,7 +23,48 @@
     </Window.Resources>
     <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="22,10,22,20">
         <StackPanel>
-            <TextBlock Style="{StaticResource H}" Text="Basics" Margin="0,6,0,6" />
+            <TextBlock Style="{StaticResource H}" Text="Getting around" Margin="0,6,0,6" />
+            <StackPanel>
+                <StackPanel.Resources>
+                    <Style x:Key="Key" TargetType="TextBlock" BasedOn="{StaticResource Code}">
+                        <Setter Property="Width" Value="210" />
+                    </Style>
+                </StackPanel.Resources>
+                <DockPanel><TextBlock Style="{StaticResource Key}" Text="Enter  /  Backspace" /><TextBlock Style="{StaticResource Desc}" Text="Open the selected folder or file  /  go up to the containing folder." /></DockPanel>
+                <DockPanel><TextBlock Style="{StaticResource Key}" Text="Alt+Left  Alt+Right  Alt+Up" /><TextBlock Style="{StaticResource Desc}" Text="Back, forward, up. The extra mouse buttons also go back and forward." /></DockPanel>
+                <DockPanel><TextBlock Style="{StaticResource Key}" Text="Ctrl+L  or  Alt+D" /><TextBlock Style="{StaticResource Desc}" Text="Type a path in the address bar. %TEMP% and ~ work; text that is not a path searches everywhere." /></DockPanel>
+                <DockPanel><TextBlock Style="{StaticResource Key}" Text="Ctrl+P" /><TextBlock Style="{StaticResource Desc}" Text="Jump to any folder on any indexed drive by typing part of its name." /></DockPanel>
+                <DockPanel><TextBlock Style="{StaticResource Key}" Text="Ctrl+F  (or just type)" /><TextBlock Style="{StaticResource Desc}" Text="Filter the folder on show. Esc clears the filter." /></DockPanel>
+                <DockPanel><TextBlock Style="{StaticResource Key}" Text="Ctrl+Shift+R" /><TextBlock Style="{StaticResource Desc}" Text="Include subfolders: the folder and everything beneath it as one flat, sortable list." /></DockPanel>
+                <DockPanel><TextBlock Style="{StaticResource Key}" Text="Ctrl+Shift+F" /><TextBlock Style="{StaticResource Desc}" Text="Search everywhere (every indexed drive). The global hotkey does the same from any program." /></DockPanel>
+                <DockPanel><TextBlock Style="{StaticResource Key}" Text="Ctrl+T  Ctrl+W  Ctrl+Shift+T" /><TextBlock Style="{StaticResource Desc}" Text="New tab at the same folder, close tab, reopen the last closed tab. Ctrl+Tab and Ctrl+1…9 switch tabs; middle-click closes one." /></DockPanel>
+                <DockPanel><TextBlock Style="{StaticResource Key}" Text="Ctrl+\  Tab" /><TextBlock Style="{StaticResource Desc}" Text="One pane or two side by side  /  move between the panes." /></DockPanel>
+                <DockPanel><TextBlock Style="{StaticResource Key}" Text="Ctrl+B  Alt+P" /><TextBlock Style="{StaticResource Desc}" Text="Show or hide the sidebar  /  the preview pane." /></DockPanel>
+                <DockPanel><TextBlock Style="{StaticResource Key}" Text="Ctrl+R  (F5)" /><TextBlock Style="{StaticResource Desc}" Text="Refresh. Folders also refresh on their own when something changes." /></DockPanel>
+                <DockPanel><TextBlock Style="{StaticResource Key}" Text="Ctrl+H" /><TextBlock Style="{StaticResource Desc}" Text="Show or hide hidden and system items in this tab." /></DockPanel>
+            </StackPanel>
+
+            <TextBlock Style="{StaticResource H}" Text="Working with files" />
+            <StackPanel>
+                <StackPanel.Resources>
+                    <Style x:Key="Key" TargetType="TextBlock" BasedOn="{StaticResource Code}">
+                        <Setter Property="Width" Value="210" />
+                    </Style>
+                </StackPanel.Resources>
+                <DockPanel><TextBlock Style="{StaticResource Key}" Text="F5  /  F6" /><TextBlock Style="{StaticResource Desc}" Text="Copy / move the selection to the folder shown in the other pane (asks first)." /></DockPanel>
+                <DockPanel><TextBlock Style="{StaticResource Key}" Text="Ctrl+C  Ctrl+X  Ctrl+V" /><TextBlock Style="{StaticResource Desc}" Text="Copy, cut and paste: works with Explorer and other programs too. Drag and drop moves within a drive and copies between drives; hold Ctrl to copy or Shift to move." /></DockPanel>
+                <DockPanel><TextBlock Style="{StaticResource Key}" Text="Ctrl+Shift+N (F7)  Ctrl+N" /><TextBlock Style="{StaticResource Desc}" Text="New folder  /  new file." /></DockPanel>
+                <DockPanel><TextBlock Style="{StaticResource Key}" Text="F2  Ctrl+F2" /><TextBlock Style="{StaticResource Desc}" Text="Rename  /  rename several items with find and replace, numbering and case changes." /></DockPanel>
+                <DockPanel><TextBlock Style="{StaticResource Key}" Text="Del  Shift+Del" /><TextBlock Style="{StaticResource Desc}" Text="Send to the Recycle Bin  /  delete permanently." /></DockPanel>
+                <DockPanel><TextBlock Style="{StaticResource Key}" Text="Ctrl+Shift+C" /><TextBlock Style="{StaticResource Desc}" Text="Copy the full path of the selection (or of the folder when nothing is selected)." /></DockPanel>
+                <DockPanel><TextBlock Style="{StaticResource Key}" Text="Ctrl+A  Ctrl+I" /><TextBlock Style="{StaticResource Desc}" Text="Select everything  /  invert the selection." /></DockPanel>
+                <DockPanel><TextBlock Style="{StaticResource Key}" Text="Alt+Enter" /><TextBlock Style="{StaticResource Desc}" Text="Properties." /></DockPanel>
+                <DockPanel><TextBlock Style="{StaticResource Key}" Text="Shift+Right-click" /><TextBlock Style="{StaticResource Desc}" Text="The full Windows menu (Send to, 7-Zip, Git and so on). It is also at the bottom of the normal right-click menu." /></DockPanel>
+                <DockPanel><TextBlock Style="{StaticResource Key}" Text="Ctrl+S  Ctrl+Shift+S" /><TextBlock Style="{StaticResource Desc}" Text="Export the list  /  the selection as CSV, text or an Everything file list." /></DockPanel>
+                <DockPanel><TextBlock Style="{StaticResource Key}" Text="foldersize:&gt;1gb" /><TextBlock Style="{StaticResource Desc}" Text="Find folders by their total size. Folder sizes come from the index, so sorting by Size shows where the space went." /></DockPanel>
+            </StackPanel>
+
+            <TextBlock Style="{StaticResource H}" Text="Search basics" />
             <Grid>
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="Auto" /><ColumnDefinition Width="*" />
@@ -42,7 +83,7 @@
                 <TextBlock Style="{StaticResource Code}" Grid.Row="4" Text="inv*2024.pdf   ?.txt" />
                 <TextBlock Style="{StaticResource Desc}" Grid.Row="4" Grid.Column="1" Text="* matches any run of characters, ? exactly one. A wildcard term must match the whole name." />
                 <TextBlock Style="{StaticResource Code}" Grid.Row="5" Text="Aa  .*  W  Path" />
-                <TextBlock Style="{StaticResource Desc}" Grid.Row="5" Grid.Column="1" Text="Toolbar toggles: match case, regular expressions, whole word, and matching against the full path instead of the name." />
+                <TextBlock Style="{StaticResource Desc}" Grid.Row="5" Grid.Column="1" Text="Match options in the filter panel: match case, regular expressions, whole word, and matching against the full path instead of the name." />
             </Grid>
 
             <TextBlock Style="{StaticResource H}" Text="Functions" />
@@ -82,33 +123,19 @@
                 <TextBlock Style="{StaticResource Desc}" Grid.Row="12" Grid.Column="1" Text="Combine freely. The filter panel adds the same constraints without typing." />
             </Grid>
 
-            <TextBlock Style="{StaticResource H}" Text="Keyboard" />
-            <Grid>
-                <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="Auto" /><ColumnDefinition Width="*" />
-                </Grid.ColumnDefinitions>
-                <Grid.RowDefinitions>
-                    <RowDefinition /><RowDefinition /><RowDefinition /><RowDefinition /><RowDefinition /><RowDefinition /><RowDefinition /><RowDefinition /><RowDefinition />
-                </Grid.RowDefinitions>
-                <TextBlock Style="{StaticResource Code}" Grid.Row="0" Text="Ctrl+T / Ctrl+W / Ctrl+Tab" />
-                <TextBlock Style="{StaticResource Desc}" Grid.Row="0" Grid.Column="1" Text="New tab, close tab, switch tabs. Middle-click a tab to close it." />
-                <TextBlock Style="{StaticResource Code}" Grid.Row="1" Text="Enter / Alt+Enter" />
-                <TextBlock Style="{StaticResource Desc}" Grid.Row="1" Grid.Column="1" Text="Open the selected item / show its Properties." />
-                <TextBlock Style="{StaticResource Code}" Grid.Row="2" Text="Ctrl+C / Ctrl+Shift+C" />
-                <TextBlock Style="{StaticResource Desc}" Grid.Row="2" Grid.Column="1" Text="Copy the files (paste into Explorer) / copy the full paths as text." />
-                <TextBlock Style="{StaticResource Code}" Grid.Row="3" Text="Ctrl+Shift+E" />
-                <TextBlock Style="{StaticResource Desc}" Grid.Row="3" Grid.Column="1" Text="Reveal in Explorer." />
-                <TextBlock Style="{StaticResource Code}" Grid.Row="4" Text="Drag &amp; drop" />
-                <TextBlock Style="{StaticResource Desc}" Grid.Row="4" Grid.Column="1" Text="Drag results out to Explorer, e-mail or any app. Drop a folder onto the window to search inside it." />
-                <TextBlock Style="{StaticResource Code}" Grid.Row="5" Text="F5" />
-                <TextBlock Style="{StaticResource Desc}" Grid.Row="5" Grid.Column="1" Text="Rebuild the index." />
-                <TextBlock Style="{StaticResource Code}" Grid.Row="6" Text="Ctrl+S / Ctrl+Shift+S" />
-                <TextBlock Style="{StaticResource Desc}" Grid.Row="6" Grid.Column="1" Text="Export all results / the selection as CSV, a list of paths, or an Everything .efu file list." />
-                <TextBlock Style="{StaticResource Code}" Grid.Row="8" Text="F2 / Ctrl+F2 / Del" />
-                <TextBlock Style="{StaticResource Desc}" Grid.Row="8" Grid.Column="1" Text="Rename / rename multiple with preview / send to the Recycle Bin. Move and copy to a folder are on the right-click menu. Right-click a column header to choose columns." />
-                <TextBlock Style="{StaticResource Code}" Grid.Row="7" Text="Ctrl+Alt+F (global)" />
-                <TextBlock Style="{StaticResource Desc}" Grid.Row="7" Grid.Column="1" Text="Show or hide FastFind from anywhere. Change it in Settings. Closing the window keeps FastFind in the tray; Ctrl+Q exits." />
-            </Grid>
+            <TextBlock Style="{StaticResource H}" Text="Also useful" />
+            <StackPanel>
+                <StackPanel.Resources>
+                    <Style x:Key="Key" TargetType="TextBlock" BasedOn="{StaticResource Code}">
+                        <Setter Property="Width" Value="210" />
+                    </Style>
+                </StackPanel.Resources>
+                <DockPanel><TextBlock Style="{StaticResource Key}" Text="Ctrl+Alt+F (global)" /><TextBlock Style="{StaticResource Desc}" Text="Show or hide FastFind from anywhere. Change it in Settings. Closing the window keeps FastFind in the tray; Ctrl+Q exits." /></DockPanel>
+                <DockPanel><TextBlock Style="{StaticResource Key}" Text="Ctrl+Shift+E" /><TextBlock Style="{StaticResource Desc}" Text="Show the selected item in Windows Explorer." /></DockPanel>
+                <DockPanel><TextBlock Style="{StaticResource Key}" Text="Column headers" /><TextBlock Style="{StaticResource Desc}" Text="Click to sort; right-click to choose columns. Drag the line between the panes to resize them, double-click it to make them equal." /></DockPanel>
+                <DockPanel><TextBlock Style="{StaticResource Key}" Text="Sidebar" /><TextBlock Style="{StaticResource Desc}" Text="Click a place to open it, middle-click for a new tab, drop files on it to copy or move them there. Right-click a folder and choose Pin to sidebar to add your own." /></DockPanel>
+                <DockPanel><TextBlock Style="{StaticResource Key}" Text="FastFind.exe C:\folder" /><TextBlock Style="{StaticResource Desc}" Text="Opens that folder in a new tab of the running window. Settings can add Open in FastFind to the Windows right-click menu." /></DockPanel>
+            </StackPanel>
         </StackPanel>
     </ScrollViewer>
 </Window>

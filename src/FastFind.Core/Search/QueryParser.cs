@@ -37,7 +37,7 @@ public static class QueryParser
     private static readonly HashSet<string> Functions = new(StringComparer.OrdinalIgnoreCase)
     {
         "ext", "size", "dm", "datemodified", "dc", "datecreated", "path", "name", "folder", "file", "infolder", "parent",
-        "regex", "case", "nocase", "wfn", "wholeword", "ww", "empty", "attrib", "attributes", "type", "kind",
+        "regex", "case", "nocase", "wfn", "wholeword", "ww", "empty", "attrib", "attributes", "type", "kind", "foldersize",
     };
 
     public static SearchQuery Parse(string? text, QueryOptions? options = null, FilterSet? filters = null, DateTime? now = null)
@@ -141,6 +141,8 @@ public static class QueryParser
                 return new ExtensionTerm(value.Split(';', ',', '|'));
             case "size":
                 return SizeParser.TryParseRange(value, out long min, out long max) ? new SizeTerm(min, max) : new NeverTerm();
+            case "foldersize":
+                return SizeParser.TryParseRange(value, out long fmin, out long fmax) ? new SizeTerm(fmin, fmax, folders: true) : new NeverTerm();
             case "dm":
             case "datemodified":
                 return DateRangeParser.TryParse(value, now, out var dmLo, out var dmHi) ? new DateTerm(DateField.Modified, dmLo, dmHi) : new NeverTerm();

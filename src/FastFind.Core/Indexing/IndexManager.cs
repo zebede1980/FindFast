@@ -273,6 +273,7 @@ public sealed class IndexManager : IDisposable
                     if (cached != null)
                     {
                         if (!vs.IsNetwork) AttachWalkWatcher(cached, vs);
+                        _ = Task.Run(() => { try { cached.UpdateFolderSizes(); } catch (Exception) { } });
                         cached.Lock.EnterReadLock();
                         try { cached.EnsureNameOrder(); } finally { cached.Lock.ExitReadLock(); }
                         vs.Index = cached;
@@ -312,6 +313,10 @@ public sealed class IndexManager : IDisposable
             // Pre-sort names so the first search is instant.
             index.Lock.EnterReadLock();
             try { index.EnsureNameOrder(); } finally { index.Lock.ExitReadLock(); }
+
+            // Folder totals are derived data: compute them off the critical path so the volume is searchable straight away.
+            var sized = index;
+            _ = Task.Run(() => { try { sized.UpdateFolderSizes(); } catch (Exception) { } });
 
             bool swapped = vs.Index != null && !ReferenceEquals(vs.Index, index);
             vs.Index = index;
@@ -402,6 +407,7 @@ public sealed class IndexManager : IDisposable
                     {
                         current.Lock.EnterReadLock();
                         try { current.EnsureNameOrder(); } finally { current.Lock.ExitReadLock(); }
+                        current.UpdateFolderSizes();
                     }
                     catch (Exception) { }
                 }, null, Timeout.Infinite, Timeout.Infinite);

@@ -17,6 +17,8 @@ public sealed class VolumeIndex
     private readonly Dictionary<ulong, int> _byKey;
     private int[]? _nameOrder;
     private ulong _nextSyntheticKey = 1UL << 62;
+    private long _version;
+    private long _folderSizeVersion = -1;
 
     public string Root { get; }
     public IndexMode Mode { get; internal set; }
@@ -46,6 +48,9 @@ public sealed class VolumeIndex
         meta[0] = new EntryMeta { Key = 0, Parent = -1, Attributes = FileAttributes.Directory };
         return new VolumeIndex(root, names, meta, 1, new Dictionary<ulong, int>(), 0, mode);
     }
+
+    /// <summary>Bumped on every mutation; lets derived data (folder sizes) know when it has gone stale.</summary>
+    public long Version => Interlocked.Read(ref _version);
 
     /// <summary>Total slots used, including tombstones. Only valid under the read lock.</summary>
     public int Count => _count;
@@ -170,6 +175,7 @@ public sealed class VolumeIndex
         _children?.TryAdd(new ChildKey(parent, name), i);
         _live++;
         _nameOrder = null;
+        _version++;
         return i;
     }
 
@@ -182,6 +188,7 @@ public sealed class VolumeIndex
         _dirPaths[i] = null;
         _live--;
         _nameOrder = null;
+        _version++;
     }
 
     /// <summary>Removes a directory and everything beneath it (used when a watcher only reports the top-level delete).</summary>
@@ -217,13 +224,15 @@ public sealed class VolumeIndex
         _children?.TryAdd(new ChildKey(newParent, newName), i);
         if (IsDirectory(i)) Array.Clear(_dirPaths, 0, _count);
         _nameOrder = null;
+        _version++;
     }
 
     public void Update(int i, long size, long modifiedFileTime, long createdFileTime, FileAttributes attributes)
     {
         if ((uint)i >= (uint)_count || _names[i] == null) return;
         ref var m = ref _meta[i];
-        m.Size = size;
+        // A directory's Size holds the aggregated size of its contents (see UpdateFolderSizes); watchers must not zero it.
+        if ((attributes & FileAttributes.Directory) == 0 && m.Size != size) { m.Size = size; _version++; }
         if (modifiedFileTime != 0) m.ModifiedFileTime = modifiedFileTime;
         if (createdFileTime != 0) m.CreatedFileTime = createdFileTime;
         m.Attributes = attributes;
@@ -233,6 +242,89 @@ public sealed class VolumeIndex
     {
         if ((uint)i >= (uint)_count || _names[i] == null) return;
         _meta[i].Attributes = attributes;
+    }
+
+    // ---- folder sizes ----
+
+    /// <summary>True once <see cref="UpdateFolderSizes"/> has run at least once, so directory entries carry a size.</summary>
+    public bool HasFolderSizes => Interlocked.Read(ref _folderSizeVersion) >= 0;
+
+    /// <summary>True when directory sizes reflect the current contents of the index.</summary>
+    public bool FolderSizesCurrent => Interlocked.Read(ref _folderSizeVersion) == Interlocked.Read(ref _version);
+
+    /// <summary>
+    /// Adds every file's size to each of its ancestor directories and stores the totals in the directories' Size field,
+    /// so folders can be sized, sorted and filtered instantly. Takes the locks itself; the caller must not hold either.
+    /// </summary>
+    public void UpdateFolderSizes()
+    {
+        long[] totals;
+        long version;
+        int count;
+        Lock.EnterReadLock();
+        try
+        {
+            version = _version;
+            if (_folderSizeVersion == version) return;
+            count = _count;
+            totals = new long[count];
+            var names = _names;
+            var meta = _meta;
+            for (int i = 0; i < count; i++)
+            {
+                if (names[i] == null) continue;
+                ref var m = ref meta[i];
+                if ((m.Attributes & FileAttributes.Directory) != 0 || m.Size <= 0) continue;
+                long size = m.Size;
+                int parent = m.Parent;
+                // The depth guard protects against a corrupt parent chain looping forever.
+                for (int depth = 0; parent >= 0 && parent < count && depth < 512; depth++)
+                {
+                    totals[parent] += size;
+                    parent = meta[parent].Parent;
+                }
+            }
+        }
+        finally
+        {
+            Lock.ExitReadLock();
+        }
+
+        Lock.EnterWriteLock();
+        try
+        {
+            // Entries are only ever appended or tombstoned, so the indices computed above are still valid if the index moved on.
+            int n = Math.Min(count, _count);
+            var names = _names;
+            var meta = _meta;
+            for (int i = 0; i < n; i++)
+            {
+                if (names[i] != null && (meta[i].Attributes & FileAttributes.Directory) != 0) meta[i].Size = totals[i];
+            }
+            Interlocked.Exchange(ref _folderSizeVersion, version);
+        }
+        finally
+        {
+            Lock.ExitWriteLock();
+        }
+    }
+
+    /// <summary>Names and aggregated sizes of the directories directly inside <paramref name="directory"/>. Caller holds the read lock.</summary>
+    public void GetChildDirectorySizes(int directory, IDictionary<string, long> output)
+    {
+        var names = _names;
+        var meta = _meta;
+        for (int i = 0; i < _count; i++)
+        {
+            if (meta[i].Parent == directory && i != RootIndex && names[i] is { } name && (meta[i].Attributes & FileAttributes.Directory) != 0)
+                output[name] = meta[i].Size;
+        }
+    }
+
+    /// <summary>Sets one entry's size and nothing else (patches folder sizes into a live listing). Caller holds the write lock.</summary>
+    public void SetSize(int i, long size)
+    {
+        if ((uint)i < (uint)_count && _names[i] != null) _meta[i].Size = size;
     }
 
     private void Grow()

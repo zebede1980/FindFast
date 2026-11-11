@@ -32,7 +32,10 @@ public static class ShellOps
         catch (Exception ex) { Logger.Warn($"Open folder failed for {directory}: {ex.Message}"); }
     }
 
-    public static void CopyFiles(IReadOnlyList<string> paths)
+    private const string DropEffectFormat = "Preferred DropEffect";
+
+    /// <summary>Puts files on the clipboard the way Explorer does, so they can be pasted here or in any other program.</summary>
+    public static void CopyFiles(IReadOnlyList<string> paths, bool cut = false)
     {
         if (paths.Count == 0) return;
         var data = new DataObject();
@@ -40,7 +43,64 @@ public static class ShellOps
         files.AddRange(paths.ToArray());
         data.SetFileDropList(files);
         data.SetText(string.Join(Environment.NewLine, paths));
+        // 2 = move (cut), 5 = copy | link: tells whoever pastes whether the originals should go.
+        data.SetData(DropEffectFormat, new System.IO.MemoryStream(BitConverter.GetBytes(cut ? 2 : 5)));
         TrySetClipboard(data);
+    }
+
+    /// <summary>Files waiting on the clipboard, and whether they were cut (so pasting should move them).</summary>
+    public static IReadOnlyList<string> ClipboardFiles(out bool cut)
+    {
+        cut = false;
+        try
+        {
+            if (!Clipboard.ContainsFileDropList()) return Array.Empty<string>();
+            var paths = Clipboard.GetFileDropList().Cast<string>().ToList();
+            if (Clipboard.GetData(DropEffectFormat) is System.IO.MemoryStream stream && stream.Length >= 4)
+            {
+                var bytes = new byte[4];
+                stream.Position = 0;
+                stream.ReadExactly(bytes);
+                cut = (BitConverter.ToInt32(bytes) & 2) != 0;
+            }
+            return paths;
+        }
+        catch (Exception ex)
+        {
+            Logger.Warn($"Clipboard read failed: {ex.Message}");
+            return Array.Empty<string>();
+        }
+    }
+
+    public static bool ClipboardHasFiles()
+    {
+        try { return Clipboard.ContainsFileDropList(); } catch (Exception) { return false; }
+    }
+
+    public static void ClearClipboard()
+    {
+        try { Clipboard.Clear(); } catch (Exception) { }
+    }
+
+    /// <summary>Opens a terminal in the folder: Windows Terminal when installed, otherwise PowerShell.</summary>
+    public static void OpenTerminal(string folder)
+    {
+        try
+        {
+            Process.Start(new ProcessStartInfo("wt.exe") { UseShellExecute = true, WorkingDirectory = folder, ArgumentList = { "-d", folder } });
+        }
+        catch (Exception)
+        {
+            try { Process.Start(new ProcessStartInfo("powershell.exe") { UseShellExecute = true, WorkingDirectory = folder }); }
+            catch (Exception ex) { Logger.Warn($"Terminal failed for {folder}: {ex.Message}"); }
+        }
+    }
+
+    /// <summary>Hands a location FastFind does not browse itself (Recycle Bin, This PC, shell: paths) to Explorer.</summary>
+    public static void OpenInExplorer(string target)
+    {
+        try { Process.Start(new ProcessStartInfo("explorer.exe", target) { UseShellExecute = true }); }
+        catch (Exception ex) { Logger.Warn($"Explorer failed for {target}: {ex.Message}"); }
     }
 
     public static void CopyText(string text) => TrySetClipboard(text);
@@ -111,19 +171,5 @@ public static class ShellOps
             return window is null ? IntPtr.Zero : new WindowInteropHelper(window).Handle;
         }
         catch { return IntPtr.Zero; }
-    }
-
-    public static void RestartElevated()
-    {
-        try
-        {
-            var exe = Environment.ProcessPath ?? throw new InvalidOperationException("No process path");
-            Process.Start(new ProcessStartInfo(exe) { UseShellExecute = true, Verb = "runas" });
-            Application.Current.Shutdown();
-        }
-        catch (Exception ex)
-        {
-            Logger.Warn($"Elevation cancelled or failed: {ex.Message}");
-        }
     }
 }

@@ -12,6 +12,8 @@
   </PropertyGroup>
   <ItemGroup>
     <ProjectReference Include="..\FastFind.Core\FastFind.Core.csproj" />
+    <!-- Referenced only so the index service (exe, dll and runtime config) is copied beside the app; it runs as its own process. -->
+    <ProjectReference Include="..\FastFind.Service\FastFind.Service.csproj" />
   </ItemGroup>
   <ItemGroup>
     <!-- Tray-resident app: prefer a smaller heap over a little GC throughput. -->

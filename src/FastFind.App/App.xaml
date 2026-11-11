@@ -42,6 +42,10 @@
                                 <Trigger Property="IsPressed" Value="True">
                                     <Setter TargetName="Bd" Property="Background" Value="{DynamicResource SubtleFillColorTertiaryBrush}" />
                                 </Trigger>
+                                <Trigger Property="IsEnabled" Value="False">
+                                    <Setter Property="Opacity" Value="0.35" />
+                                    <Setter Property="Cursor" Value="Arrow" />
+                                </Trigger>
                             </ControlTemplate.Triggers>
                         </ControlTemplate>
                     </Setter.Value>
@@ -83,6 +87,67 @@
                 </Setter>
             </Style>
 
+            <!-- Selected rows in the file lists: a tint of the Windows accent colour, so text keeps its normal colour and
+                 stays readable. App.ApplyTheme replaces this with the user's actual accent colour at start-up. -->
+            <SolidColorBrush x:Key="RowSelectedBrush" Color="#550078D4" />
+
+            <!-- One segment of the address bar -->
+            <Style x:Key="CrumbButton" TargetType="Button">
+                <Setter Property="FontSize" Value="13" />
+                <Setter Property="Padding" Value="7,3" />
+                <Setter Property="Background" Value="Transparent" />
+                <Setter Property="BorderThickness" Value="0" />
+                <Setter Property="Foreground" Value="{DynamicResource TextFillColorPrimaryBrush}" />
+                <Setter Property="Cursor" Value="Hand" />
+                <Setter Property="Focusable" Value="False" />
+                <Setter Property="VerticalAlignment" Value="Center" />
+                <Setter Property="Template">
+                    <Setter.Value>
+                        <ControlTemplate TargetType="Button">
+                            <Border x:Name="Bd" CornerRadius="5" Background="{TemplateBinding Background}" Padding="{TemplateBinding Padding}">
+                                <ContentPresenter VerticalAlignment="Center" RecognizesAccessKey="False" />
+                            </Border>
+                            <ControlTemplate.Triggers>
+                                <Trigger Property="IsMouseOver" Value="True">
+                                    <Setter TargetName="Bd" Property="Background" Value="{DynamicResource SubtleFillColorSecondaryBrush}" />
+                                </Trigger>
+                                <Trigger Property="IsPressed" Value="True">
+                                    <Setter TargetName="Bd" Property="Background" Value="{DynamicResource SubtleFillColorTertiaryBrush}" />
+                                </Trigger>
+                            </ControlTemplate.Triggers>
+                        </ControlTemplate>
+                    </Setter.Value>
+                </Setter>
+            </Style>
+
+            <!-- A place in the sidebar -->
+            <Style x:Key="SidebarButton" TargetType="Button">
+                <Setter Property="Background" Value="Transparent" />
+                <Setter Property="BorderThickness" Value="0" />
+                <Setter Property="Foreground" Value="{DynamicResource TextFillColorPrimaryBrush}" />
+                <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+                <Setter Property="Padding" Value="10,6" />
+                <Setter Property="Margin" Value="0,1" />
+                <Setter Property="Focusable" Value="False" />
+                <Setter Property="Template">
+                    <Setter.Value>
+                        <ControlTemplate TargetType="Button">
+                            <Border x:Name="Bd" CornerRadius="6" Background="{TemplateBinding Background}" Padding="{TemplateBinding Padding}">
+                                <ContentPresenter HorizontalAlignment="Stretch" VerticalAlignment="Center" />
+                            </Border>
+                            <ControlTemplate.Triggers>
+                                <Trigger Property="IsMouseOver" Value="True">
+                                    <Setter TargetName="Bd" Property="Background" Value="{DynamicResource SubtleFillColorSecondaryBrush}" />
+                                </Trigger>
+                                <Trigger Property="IsPressed" Value="True">
+                                    <Setter TargetName="Bd" Property="Background" Value="{DynamicResource SubtleFillColorTertiaryBrush}" />
+                                </Trigger>
+                            </ControlTemplate.Triggers>
+                        </ControlTemplate>
+                    </Setter.Value>
+                </Setter>
+            </Style>
+
             <Style x:Key="FilterLabel" TargetType="TextBlock">
                 <Setter Property="FontSize" Value="11" />
                 <Setter Property="FontWeight" Value="SemiBold" />
@@ -103,12 +168,14 @@
                     <Setter.Value>
                         <ControlTemplate TargetType="TabItem">
                             <Grid>
-                                <Border x:Name="Bd" CornerRadius="8" Background="Transparent" Padding="{TemplateBinding Padding}" MinWidth="110" MaxWidth="240">
+                                <Border x:Name="Bd" CornerRadius="8" Background="Transparent" Padding="{TemplateBinding Padding}" MinWidth="90" MaxWidth="220"
+                                        ToolTip="{Binding Location}">
                                     <DockPanel>
                                         <Button x:Name="CloseBtn" DockPanel.Dock="Right" Style="{StaticResource IconButton}" Width="22" Height="22" FontSize="10"
-                                                Content="&#xE8BB;" Margin="8,0,-4,0" Opacity="0" ToolTip="Close tab (Ctrl+W)"
-                                                Command="{Binding DataContext.CloseTabCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                                                Content="&#xE8BB;" Margin="8,0,-4,0" Opacity="0" ToolTip="Close tab (Ctrl+W)" AutomationProperties.Name="Close tab"
+                                                Command="{Binding DataContext.CloseTabCommand, RelativeSource={RelativeSource AncestorType=TabControl}}"
                                                 CommandParameter="{Binding}" />
+                                        <TextBlock DockPanel.Dock="Left" FontFamily="{StaticResource IconFont}" Text="{Binding TabGlyph}" FontSize="12" VerticalAlignment="Center" Margin="0,1,7,0" Opacity="0.75" />
                                         <TextBlock x:Name="Title" Text="{Binding Title}" FontSize="13" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
                                     </DockPanel>
                                 </Border>
@@ -145,19 +212,15 @@
                                     <RowDefinition Height="Auto" />
                                     <RowDefinition Height="*" />
                                 </Grid.RowDefinitions>
-                                <DockPanel Margin="12,10,12,0" LastChildFill="True">
-                                    <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Center">
-                                        <Button Style="{StaticResource IconButton}" Content="&#xE713;" ToolTip="Settings and index status"
-                                                Command="{Binding ShowSettingsCommand}" />
-                                        <Button Style="{StaticResource IconButton}" Content="&#xE897;" ToolTip="Search syntax (F1)" Command="{Binding ShowHelpCommand}" />
-                                    </StackPanel>
-                                    <StackPanel Orientation="Horizontal">
-                                        <TabPanel IsItemsHost="True" />
-                                        <Button Style="{StaticResource IconButton}" Content="&#xE710;" ToolTip="New tab (Ctrl+T)" VerticalAlignment="Center"
-                                                Command="{Binding NewTabCommand}" />
-                                    </StackPanel>
+                                <DockPanel Margin="10,8,10,0" LastChildFill="True">
+                                    <!-- Space reserved for the buttons PaneView lays over the right of the strip (new tab, window commands).
+                                         They live outside this template because a tab control exposes only its tabs to assistive technology. -->
+                                    <Border DockPanel.Dock="Right" Width="{Binding Tag, RelativeSource={RelativeSource TemplatedParent}}" />
+                                    <!-- The tab panel takes the remaining width so a crowded strip wraps onto a second row instead of clipping -->
+                                    <TabPanel IsItemsHost="True" HorizontalAlignment="Left" />
                                 </DockPanel>
-                                <ContentPresenter Grid.Row="1" ContentSource="SelectedContent" />
+                                <!-- The part name matters: without it the tab's content is invisible to screen readers and UI automation -->
+                                <ContentPresenter x:Name="PART_SelectedContentHost" Grid.Row="1" ContentSource="SelectedContent" />
                             </Grid>
                         </ControlTemplate>
                     </Setter.Value>

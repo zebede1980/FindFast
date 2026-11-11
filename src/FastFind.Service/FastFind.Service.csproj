@@ -1,0 +1,18 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <!-- WinExe: started by Task Scheduler at sign-in, so there must be no console window. -->
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net10.0-windows</TargetFramework>
+    <RootNamespace>FastFind.Service</RootNamespace>
+    <AssemblyName>FastFind.Service</AssemblyName>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\FastFind.Core\FastFind.Core.csproj" />
+  </ItemGroup>
+  <ItemGroup>
+    <!-- Resident background process: prefer a smaller heap over a little GC throughput. -->
+    <RuntimeHostConfigurationOption Include="System.GC.ConserveMemory" Value="6" />
+    <RuntimeHostConfigurationOption Include="System.GC.RetainVM" Value="false" />
+    <RuntimeHostConfigurationOption Include="System.GC.Concurrent" Value="false" />
+  </ItemGroup>
+</Project>

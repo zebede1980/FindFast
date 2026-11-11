@@ -9,6 +9,9 @@ public partial class RenameWindow : Window
 {
     private readonly string _path;
 
+    /// <summary>The name the item was given, once the dialog has been confirmed.</summary>
+    public string NewName { get; private set; } = "";
+
     public RenameWindow(string path)
     {
         _path = path;
@@ -34,6 +37,7 @@ public partial class RenameWindow : Window
     {
         string? error = ShellFileOps.Rename(_path, NameBox.Text.Trim());
         if (error != null) { ErrorText.Text = error; return; }
+        NewName = NameBox.Text.Trim();
         DialogResult = true;
         Close();
     }

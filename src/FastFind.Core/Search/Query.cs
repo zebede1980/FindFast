@@ -276,12 +276,14 @@ public sealed class SizeTerm : Term
     public long Min { get; }
     public long Max { get; }
     public override int Cost => 0;
-    public SizeTerm(long min, long max) { Min = min; Max = max; }
+    /// <summary>When set the term matches folders by their aggregated size instead of files.</summary>
+    public bool Folders { get; }
+    public SizeTerm(long min, long max, bool folders = false) { Min = min; Max = max; Folders = folders; }
 
     protected override bool MatchesCore(VolumeIndex volume, int index, string name)
     {
         ref var m = ref volume.MetaArray[index];
-        if (m.IsDirectory) return false;
+        if (m.IsDirectory != Folders) return false;
         return m.Size >= Min && m.Size <= Max;
     }
 }

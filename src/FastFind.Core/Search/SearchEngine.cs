@@ -6,7 +6,12 @@ namespace FastFind.Core.Search;
 
 public readonly record struct Hit(int Volume, int Index);
 
-public enum SortField { Name, Path, Size, Modified, Created, Extension }
+public enum SortField
+{
+    Name, Path, Size, Modified, Created, Extension,
+    /// <summary>Shortest names first, newest first within a length: puts exact and near-exact matches at the top.</summary>
+    Relevance,
+}
 
 public sealed class SearchResult
 {
@@ -29,7 +34,7 @@ public static class SearchEngine
 {
     private const int Partition = 32 * 1024;
 
-    public static SearchResult Search(IReadOnlyList<VolumeIndex> volumes, SearchQuery query, SortField sort = SortField.Name, bool descending = false, CancellationToken ct = default)
+    public static SearchResult Search(IReadOnlyList<VolumeIndex> volumes, SearchQuery query, SortField sort = SortField.Name, bool descending = false, CancellationToken ct = default, bool foldersFirst = false)
     {
         var sw = Stopwatch.StartNew();
         var vols = volumes.ToArray();
@@ -49,6 +54,7 @@ public static class SearchEngine
 
             if (sort != SortField.Name) SortHits(vols, hits, sort, ct);
             if (descending) Array.Reverse(hits);
+            if (foldersFirst) hits = FoldersFirst(vols, hits);
 
             return new SearchResult { Volumes = vols, Hits = hits, Elapsed = sw.Elapsed, Error = query.Error, SortField = sort, Descending = descending };
         }
@@ -138,6 +144,17 @@ public static class SearchEngine
         return hits;
     }
 
+    /// <summary>Stable partition: directories ahead of files, each group keeping its sorted order (Explorer-style listing).</summary>
+    private static Hit[] FoldersFirst(VolumeIndex[] vols, Hit[] hits)
+    {
+        var output = new Hit[hits.Length];
+        int o = 0;
+        foreach (var h in hits) if (vols[h.Volume].MetaArray[h.Index].IsDirectory) output[o++] = h;
+        if (o == 0 || o == hits.Length) return hits;
+        foreach (var h in hits) if (!vols[h.Volume].MetaArray[h.Index].IsDirectory) output[o++] = h;
+        return output;
+    }
+
     private static void SortHits(VolumeIndex[] vols, Hit[] hits, SortField sort, CancellationToken ct)
     {
         if (hits.Length < 2) return;
@@ -148,6 +165,11 @@ public static class SearchEngine
             SortField.Created => (a, b) => vols[a.Volume].MetaArray[a.Index].CreatedFileTime.CompareTo(vols[b.Volume].MetaArray[b.Index].CreatedFileTime),
             SortField.Extension => (a, b) => Extension(vols[a.Volume].NamesArray[a.Index]).CompareTo(Extension(vols[b.Volume].NamesArray[b.Index]), StringComparison.OrdinalIgnoreCase),
             SortField.Path => (a, b) => string.Compare(vols[a.Volume].GetParentPath(a.Index), vols[b.Volume].GetParentPath(b.Index), StringComparison.OrdinalIgnoreCase),
+            SortField.Relevance => (a, b) =>
+            {
+                int c = (vols[a.Volume].NamesArray[a.Index]?.Length ?? 0).CompareTo(vols[b.Volume].NamesArray[b.Index]?.Length ?? 0);
+                return c != 0 ? c : vols[b.Volume].MetaArray[b.Index].ModifiedFileTime.CompareTo(vols[a.Volume].MetaArray[a.Index].ModifiedFileTime);
+            },
             _ => (a, b) => string.Compare(vols[a.Volume].NamesArray[a.Index], vols[b.Volume].NamesArray[b.Index], StringComparison.OrdinalIgnoreCase),
         };
         // Stable tie-break on name keeps the list deterministic.

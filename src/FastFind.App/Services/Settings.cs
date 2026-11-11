@@ -29,6 +29,21 @@ public sealed class Settings
     public string SortField { get; set; } = "Name";
     public bool SortDescending { get; set; }
 
+    /// <summary>Two panes side by side.</summary>
+    public bool DualPane { get; set; } = true;
+    public bool SidebarVisible { get; set; } = true;
+    public double SidebarWidth { get; set; } = 220;
+    public bool PreviewVisible { get; set; }
+    public double PreviewWidth { get; set; } = 320;
+    /// <summary>Folders pinned to the sidebar by the user.</summary>
+    public List<string> Favourites { get; set; } = new();
+    /// <summary>Open tabs, restored at the next launch. Null until the app has been closed once.</summary>
+    public SessionState? Session { get; set; }
+    /// <summary>Show each folder's total size (taken from the index) in the Size column.</summary>
+    public bool ShowFolderSizes { get; set; } = true;
+    /// <summary>Ask before sending items to the Recycle Bin.</summary>
+    public bool ConfirmRecycle { get; set; } = true;
+
     private static readonly string FilePath = Path.Combine(Logger.Directory, "settings.json");
     private static readonly JsonSerializerOptions Options = new() { WriteIndented = true, DefaultIgnoreCondition = JsonIgnoreCondition.Never };
 
@@ -51,6 +66,23 @@ public sealed class Settings
         }
         catch (Exception ex) { Logger.Warn($"Settings save failed: {ex.Message}"); }
     }
+}
+
+public sealed class SessionState
+{
+    public List<TabState> Left { get; set; } = new();
+    public List<TabState> Right { get; set; } = new();
+    public int LeftSelected { get; set; }
+    public int RightSelected { get; set; }
+    public bool RightActive { get; set; }
+}
+
+public sealed class TabState
+{
+    /// <summary>Folder shown in the tab; empty means "everywhere" (a search across the whole index).</summary>
+    public string Location { get; set; } = "";
+    public string Query { get; set; } = "";
+    public bool Recursive { get; set; }
 }
 
 public sealed class ColumnSetting

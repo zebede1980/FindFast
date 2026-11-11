@@ -4,8 +4,9 @@
   <trustInfo xmlns="urn:schemas-microsoft-com:asm.v2">
     <security>
       <requestedPrivileges xmlns="urn:schemas-microsoft-com:asm.v3">
-        <!-- highestAvailable: admins get a UAC prompt (fast NTFS indexing); standard users run without one (folder scan). -->
-        <requestedExecutionLevel level="highestAvailable" uiAccess="false" />
+        <!-- asInvoker: the window never runs elevated, so files it opens do not either and drag-and-drop with other programs works.
+             Fast NTFS indexing comes from the separate index service (FastFind.Service.exe), installed from Settings. -->
+        <requestedExecutionLevel level="asInvoker" uiAccess="false" />
       </requestedPrivileges>
     </security>
   </trustInfo>
