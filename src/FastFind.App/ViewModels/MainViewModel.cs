@@ -142,6 +142,21 @@ public sealed class MainViewModel : ObservableObject
     /// <summary>The pane a copy or move "to the other side" lands in, or null when only one pane is showing.</summary>
     public PaneViewModel? OtherPane(PaneViewModel pane) => !IsDualPane ? null : ReferenceEquals(pane, Left) ? Right : Left;
 
+    /// <summary>
+    /// Shows a folder in the pane opposite <paramref name="from"/>: from the left it opens on the right, from the right
+    /// on the left. With only one pane showing, the second pane is turned on to receive it. The pane you are in stays
+    /// the active one, so you can carry on where you were.
+    /// </summary>
+    /// <param name="select">An item in the folder to select once it has loaded (used to show a file in its folder).</param>
+    /// <param name="newTab">Open in a new tab of the other pane instead of replacing what its current tab shows.</param>
+    public void OpenInOtherPane(PaneViewModel from, string folder, string? select = null, bool newTab = false)
+    {
+        if (!IsDualPane) IsDualPane = true;
+        var other = ReferenceEquals(from, Right) ? Left : Right;
+        if (!newTab && other.SelectedTab is { } tab) tab.Navigate(folder, select);
+        else other.AddTab(folder, selectName: select);
+    }
+
     public FileTabViewModel? ActiveTab => ActivePane.SelectedTab;
 
     public bool IsDualPane

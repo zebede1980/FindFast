@@ -59,9 +59,9 @@ public partial class PaneView : UserControl
             item.Click += (_, _) => action();
             menu.Items.Add(item);
         }
-        var other = pane.Main.OtherPane(pane);
         Add("Duplicate tab", () => pane.AddTab(tab.Location, tab.QueryText, tab.Recursive), "Ctrl+T");
-        Add("Open in other pane", () => other?.AddTab(tab.Location, tab.QueryText, tab.Recursive), enabled: other != null);
+        // A folder tab opens as a new tab on the other side (bringing up the second pane if need be); a search tab has no folder to send.
+        Add("Open in other pane", () => pane.Main.OpenInOtherPane(pane, tab.Location, newTab: true), enabled: !tab.IsEverywhere);
         if (!tab.IsEverywhere)
         {
             bool pinned = pane.Main.IsPinned(tab.Location);

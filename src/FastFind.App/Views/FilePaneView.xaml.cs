@@ -598,6 +598,7 @@ public partial class FilePaneView : UserControl
         }
         switch (key)
         {
+            case Key.Enter when shift: if (FirstSelected() is { } across) OpenInOtherPane(across); return true;
             case Key.Enter: OpenSelected(newTab: false); return true;
             case Key.Back: _focusGridOnResults = true; vm.GoUp(); return true;
             case Key.F2: RenameSelected(); return true;
@@ -721,8 +722,8 @@ public partial class FilePaneView : UserControl
         _deferredSelectRow = null;
         var paths = SelectedPaths().ToArray();
         if (paths.Length == 0) return;
-        var data = new DataObject(DataFormats.FileDrop, paths);
-        data.SetText(string.Join(Environment.NewLine, paths));
+        // The shell's own data object, as Explorer drags: other programs (Teams, browsers, mail) take it without fuss.
+        var data = ShellDataObject.ForDrag(paths);
         try { DragDrop.DoDragDrop(Grid, data, DragDropEffects.Copy | DragDropEffects.Move | DragDropEffects.Link); }
         catch (Exception ex) { Logger.Warn($"Drag failed: {ex.Message}"); }
     }
@@ -833,6 +834,20 @@ public partial class FilePaneView : UserControl
         if (folder == null) { ShellOps.Open(row.FullPath); return; }
         if (newTab) Pane?.AddTab(folder);
         else { _focusGridOnResults = true; Vm?.Navigate(folder); }
+    }
+
+    /// <summary>
+    /// Shows an item in the pane opposite this one (turning the second pane on if needed): a folder is opened there, a
+    /// shortcut to a folder opens its target, and a file is shown selected in its own folder.
+    /// </summary>
+    private void OpenInOtherPane(FileRow row)
+    {
+        var pane = Pane;
+        var main = MainVm;
+        if (pane == null || main == null || row.IsDeleted) return;
+        string? folder = row.IsDirectory ? row.FullPath : ShellLinks.FolderTarget(row.FullPath);
+        if (folder != null) main.OpenInOtherPane(pane, folder);
+        else if (row.Directory.Length > 0) main.OpenInOtherPane(pane, row.Directory, row.Name);
     }
 
     // ---- command bar ----
@@ -1130,9 +1145,14 @@ public partial class FilePaneView : UserControl
         if (single && first.IsDirectory)
         {
             items.Add(Item("Open in new _tab", () => pane?.AddTab(first.FullPath), "Ctrl+Enter"));
-            if (dual && pane != null) items.Add(Item("Open in other pa_ne", () => main!.OtherPane(pane)?.SelectedTab?.Navigate(first.FullPath)));
+            // Always offered: with one pane showing it brings up the second pane at this folder.
+            items.Add(Item("Open in other pa_ne", () => OpenInOtherPane(first), "Shift+Enter"));
         }
-        if (single && !first.IsDirectory) items.Add(Item("Open _with…", () => ShellOps.OpenWith(first.FullPath)));
+        if (single && !first.IsDirectory)
+        {
+            items.Add(Item("Open _with…", () => ShellOps.OpenWith(first.FullPath)));
+            items.Add(Item("Show in other pa_ne", () => OpenInOtherPane(first), "Shift+Enter"));
+        }
         if (single && vm.ShowPathColumn) items.Add(Item("Go to containing _folder", () => { _focusGridOnResults = true; vm.Navigate(first.Directory, first.Name); }));
         items.Add(new Separator());
 
@@ -1192,6 +1212,7 @@ public partial class FilePaneView : UserControl
         items.Add(Item("Copy folder p_ath", () => ShellOps.CopyText(folder)));
         bool pinned = main?.IsPinned(folder) == true;
         items.Add(Item(pinned ? "Unpin from sidebar" : "Pin to sidebar", () => { if (pinned) main?.Unpin(folder); else main?.Pin(folder); }));
+        if (Pane is { } here) items.Add(Item("Open this folder in other pa_ne", () => main?.OpenInOtherPane(here, folder)));
         items.Add(Item("Open in Terminal", () => ShellOps.OpenTerminal(folder)));
         items.Add(Item("Open in Windows Explorer", () => ShellOps.OpenFolder(folder)));
         items.Add(new Separator());

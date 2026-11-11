@@ -15,7 +15,8 @@ A tab is a **location plus a query**:
 ### File manager
 
 * **Two panes side by side** (Ctrl+\ for one or two), each with its own **tabs**, address bar, history and filter box.
-  Tab moves between panes; drag the divider to resize, double-click it to equalise.
+  Tab moves between panes; drag the divider to resize, double-click it to equalise. **Open in other pane**
+  (right-click, or Shift+Enter) shows a folder on the opposite side, bringing up the second pane if only one is showing.
 * **Address bar** with clickable breadcrumbs; Ctrl+L to type a path (`%TEMP%` and `~` work).
   **Back / forward / up** with Alt+arrows, Backspace or the extra mouse buttons.
 * **Copy and move** with the same engine, progress and conflict dialogs as Explorer: F5 / F6 to the other pane,

@@ -240,6 +240,32 @@ public sealed class FileServiceTests : IDisposable
     }
 
     [Fact]
+    public void DraggedFilesUseTheShellsDataObject() => Ui.Run(() =>
+    {
+        // Two files in different folders, as a search result would give.
+        Directory.CreateDirectory(Path.Combine(_root, "one"));
+        Directory.CreateDirectory(Path.Combine(_root, "two"));
+        string a = Path.Combine(_root, "one", "a.txt"), b = Path.Combine(_root, "two", "b.txt");
+        File.WriteAllText(a, "a");
+        File.WriteAllText(b, "b");
+
+        var data = ShellDataObject.ForDrag(new[] { a, b });
+        var dropped = Assert.IsType<string[]>(data.GetData(System.Windows.DataFormats.FileDrop));
+        Assert.Equal(new[] { "a.txt", "b.txt" }, dropped.Select(Path.GetFileName).Order());
+        Assert.All(dropped, p => Assert.True(File.Exists(p)));
+        Assert.True(data.GetDataPresent("Shell IDList Array")); // what Explorer's own drags carry
+        Assert.False(data.GetDataPresent(System.Windows.DataFormats.UnicodeText)); // text alongside files confuses Teams
+        Assert.False(data.GetDataPresent(System.Windows.DataFormats.Text));
+
+        // A file that has gone since it was listed still drags, as a plain file list.
+        string missing = Path.Combine(_root, "gone.txt");
+        var plain = ShellDataObject.ForDrag(new[] { a, missing });
+        Assert.Equal(new[] { a, missing }, Assert.IsType<string[]>(plain.GetData(System.Windows.DataFormats.FileDrop)));
+        Assert.False(plain.GetDataPresent(System.Windows.DataFormats.UnicodeText));
+        return Task.CompletedTask;
+    });
+
+    [Fact]
     public void UniqueNameAvoidsExistingFilesAndFolders()
     {
         Assert.Equal("New folder", FileOperations.UniqueName(_root, "New folder"));
@@ -322,4 +348,86 @@ public sealed class FileServiceTests : IDisposable
         Assert.Null(ShellLinks.FolderTarget(Path.Combine(_root, "plain.txt")));
         Assert.Null(ShellLinks.FolderTarget(Path.Combine(_root, "missing.lnk")));
     }
+}
+
+public sealed class OtherPaneTests : IDisposable
+{
+    private readonly string _root = Path.Combine(Path.GetTempPath(), "FastFindAppTests_" + Guid.NewGuid().ToString("N"));
+    private readonly string _docs, _old, _empty;
+
+    public OtherPaneTests()
+    {
+        _docs = Path.Combine(_root, "Docs");
+        _old = Path.Combine(_docs, "Old");
+        _empty = Path.Combine(_root, "Empty");
+        Directory.CreateDirectory(_old);
+        Directory.CreateDirectory(_empty);
+        File.WriteAllText(Path.Combine(_docs, "plan.txt"), "plan");
+    }
+
+    public void Dispose()
+    {
+        App.Settings.Session = null;
+        try { Directory.Delete(_root, recursive: true); } catch (Exception) { }
+    }
+
+    private MainViewModel Start(bool dualPane)
+    {
+        App.Settings.SortField = "Name";
+        App.Settings.SortDescending = false;
+        App.Settings.DualPane = dualPane;
+        App.Settings.Session = new SessionState
+        {
+            Left = { new TabState { Location = _root } },
+            Right = { new TabState { Location = _empty } },
+        };
+        // The index host is never started: folder views read the file system and need no index.
+        return new MainViewModel(new IndexHost(new IndexSettings()), Dispatcher.CurrentDispatcher);
+    }
+
+    [Fact]
+    public void FromASinglePaneItBringsUpTheSecondPaneAtThatFolder() => Ui.Run(async () =>
+    {
+        var main = Start(dualPane: false);
+        Assert.False(main.IsDualPane);
+
+        main.OpenInOtherPane(main.Left, _docs);
+
+        Assert.True(main.IsDualPane);
+        Assert.Same(main.Left, main.ActivePane); // you stay where you were
+        await Ui.WaitFor(() => main.Right.SelectedTab!.Location == _docs && main.Right.SelectedTab.Results.Count == 2, "the right pane to show Docs");
+        Assert.Equal(_root, main.Left.SelectedTab!.Location); // the pane you were in is untouched
+        Assert.Single(main.Right.Tabs);
+    });
+
+    [Fact]
+    public void FromTheLeftItOpensOnTheRightAndFromTheRightOnTheLeft() => Ui.Run(async () =>
+    {
+        var main = Start(dualPane: true);
+
+        main.OpenInOtherPane(main.Left, _docs);
+        await Ui.WaitFor(() => main.Right.SelectedTab!.Location == _docs, "the right pane to show Docs");
+        Assert.Equal(_root, main.Left.SelectedTab!.Location);
+
+        main.ActivePane = main.Right;
+        main.OpenInOtherPane(main.Right, _old);
+        await Ui.WaitFor(() => main.Left.SelectedTab!.Location == _old, "the left pane to show Old");
+        Assert.Equal(_docs, main.Right.SelectedTab!.Location);
+        Assert.Same(main.Right, main.ActivePane);
+        Assert.True(main.Left.SelectedTab.CanGoBack); // it navigated the existing tab, so Back returns to what was there
+    });
+
+    [Fact]
+    public void AFileIsShownSelectedInItsFolderAndATabCanBeSentAcrossAsANewTab() => Ui.Run(async () =>
+    {
+        var main = Start(dualPane: true);
+
+        main.OpenInOtherPane(main.Left, _docs, select: "plan.txt");
+        await Ui.WaitFor(() => main.Right.SelectedTab!.Location == _docs && main.Right.SelectedTab.Results.Count == 2, "the right pane to show Docs");
+        Assert.Equal("plan.txt", main.Right.SelectedTab!.PendingSelectName);
+
+        main.OpenInOtherPane(main.Left, _old, newTab: true);
+        Assert.Equal(2, main.Right.Tabs.Count);
+        Assert.Equal(_old, main.Right.SelectedTab!.Location);
+    });
 }

@@ -401,10 +401,9 @@ public partial class MainWindow : Window
             mi.Click += (_, _) => action();
             menu.Items.Add(mi);
         }
-        var other = ViewModel.OtherPane(ViewModel.ActivePane);
         Add("Open", () => GoToSidebarItem(item, false));
         Add("Open in new tab", () => GoToSidebarItem(item, true));
-        Add("Open in other pane", () => other?.SelectedTab?.Navigate(item.Path), other != null);
+        Add("Open in other pane", () => ViewModel.OpenInOtherPane(ViewModel.ActivePane, item.Path));
         menu.Items.Add(new Separator());
         if (item.Kind == SidebarKind.Favourite)
         {
