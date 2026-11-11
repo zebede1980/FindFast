@@ -419,3 +419,122 @@ public class PipeTests
         }
     }
 }
+
+public class NameOrderTests
+{
+    private static string[] Search(VolumeIndex idx, string query = "")
+    {
+        var r = SearchEngine.Search(new[] { idx }, QueryParser.Parse(query));
+        return r.Hits.Select(h => idx.GetName(h.Index)!).ToArray();
+    }
+
+    private static void Write(VolumeIndex idx, Action change)
+    {
+        idx.Lock.EnterWriteLock();
+        try { change(); } finally { idx.Lock.ExitWriteLock(); }
+    }
+
+    [Fact]
+    public void AddsRenamesAndDeletesAreMergedIntoTheSortedOrder()
+    {
+        var idx = VolumeIndex.CreateEmpty(@"C:\", IndexMode.DirectoryWalk);
+        int delta = 0, kilo = 0;
+        Write(idx, () =>
+        {
+            idx.Add(0, "bravo.txt", idx.RootIndex, FileAttributes.Normal, 1, 0, 0);
+            delta = idx.Add(0, "delta.txt", idx.RootIndex, FileAttributes.Normal, 1, 0, 0);
+            idx.Add(0, "foxtrot.txt", idx.RootIndex, FileAttributes.Normal, 1, 0, 0);
+            kilo = idx.Add(0, "kilo.txt", idx.RootIndex, FileAttributes.Normal, 1, 0, 0);
+        });
+        Assert.Equal(new[] { "bravo.txt", "delta.txt", "foxtrot.txt", "kilo.txt" }, Search(idx));
+        Assert.True(idx.IsNameOrderReady);
+
+        // Changes after the order exists: one at the front, one in the middle, one at the end, a rename and a delete.
+        Write(idx, () =>
+        {
+            idx.Add(0, "alpha.txt", idx.RootIndex, FileAttributes.Normal, 1, 0, 0);
+            idx.Add(0, "Echo.txt", idx.RootIndex, FileAttributes.Normal, 1, 0, 0);
+            idx.Add(0, "zulu.txt", idx.RootIndex, FileAttributes.Normal, 1, 0, 0);
+            idx.Rename(delta, "yankee.txt", idx.RootIndex);
+            idx.Remove(kilo);
+        });
+        Assert.True(idx.IsNameOrderReady); // not thrown away: merged on the next search
+        Assert.Equal(new[] { "alpha.txt", "bravo.txt", "Echo.txt", "foxtrot.txt", "yankee.txt", "zulu.txt" }, Search(idx));
+
+        // An entry added and removed again before any search must not reappear.
+        Write(idx, () =>
+        {
+            int temp = idx.Add(0, "charlie.tmp", idx.RootIndex, FileAttributes.Normal, 1, 0, 0);
+            idx.Remove(temp);
+        });
+        Assert.Equal(new[] { "alpha.txt", "bravo.txt", "Echo.txt", "foxtrot.txt", "yankee.txt", "zulu.txt" }, Search(idx));
+    }
+
+    [Fact]
+    public void IncrementalOrderMatchesAFullSortAfterManyRandomChanges()
+    {
+        var random = new Random(12345);
+        var idx = VolumeIndex.CreateEmpty(@"C:\", IndexMode.DirectoryWalk);
+        var live = new List<int>();
+        Write(idx, () => { for (int i = 0; i < 2000; i++) live.Add(idx.Add(0, $"file{random.Next(100000):D5}.dat", idx.RootIndex, FileAttributes.Normal, 1, 0, 0)); });
+        Search(idx);
+
+        for (int round = 0; round < 20; round++)
+        {
+            Write(idx, () =>
+            {
+                for (int n = 0; n < 50; n++)
+                {
+                    switch (random.Next(3))
+                    {
+                        case 0: live.Add(idx.Add(0, $"file{random.Next(100000):D5}.dat", idx.RootIndex, FileAttributes.Normal, 1, 0, 0)); break;
+                        case 1 when live.Count > 0: { int at = random.Next(live.Count); idx.Remove(live[at]); live.RemoveAt(at); break; }
+                        case 2 when live.Count > 0: idx.Rename(live[random.Next(live.Count)], $"file{random.Next(100000):D5}.dat", idx.RootIndex); break;
+                    }
+                }
+            });
+            var names = Search(idx);
+            var expected = live.Select(i => idx.GetName(i)!).OrderBy(n => n, StringComparer.OrdinalIgnoreCase).ToArray();
+            Assert.Equal(expected, names);
+        }
+    }
+}
+
+public class ServiceInstallerTests
+{
+    private static readonly System.Xml.Linq.XNamespace Ns = "http://schemas.microsoft.com/windows/2004/02/mit/task";
+
+    [Fact]
+    public void TaskForTheSameUserRunsAtTheirLogonWithHighestPrivileges()
+    {
+        string sid = PipeProtocol.CurrentUserSid();
+        var xml = System.Xml.Linq.XDocument.Parse(ServiceInstaller.BuildTaskXml(@"C:\Program Files\Fast & Find\FastFind.Service.exe", sid, runAsSystem: false));
+        var task = xml.Root!;
+        Assert.Equal("HighestAvailable", task.Element(Ns + "Principals")!.Element(Ns + "Principal")!.Element(Ns + "RunLevel")!.Value);
+        Assert.Equal(sid, task.Element(Ns + "Principals")!.Element(Ns + "Principal")!.Element(Ns + "UserId")!.Value);
+        Assert.Equal("InteractiveToken", task.Element(Ns + "Principals")!.Element(Ns + "Principal")!.Element(Ns + "LogonType")!.Value);
+        Assert.NotNull(task.Element(Ns + "Triggers")!.Element(Ns + "LogonTrigger"));
+        // Task Scheduler's defaults would kill the index after three days and stop it on battery.
+        Assert.Equal("PT0S", task.Element(Ns + "Settings")!.Element(Ns + "ExecutionTimeLimit")!.Value);
+        Assert.Equal("false", task.Element(Ns + "Settings")!.Element(Ns + "DisallowStartIfOnBatteries")!.Value);
+        // Paths with special characters survive as text.
+        Assert.Equal(@"C:\Program Files\Fast & Find\FastFind.Service.exe", task.Element(Ns + "Actions")!.Element(Ns + "Exec")!.Element(Ns + "Command")!.Value);
+        Assert.Equal($"run --user {sid}", task.Element(Ns + "Actions")!.Element(Ns + "Exec")!.Element(Ns + "Arguments")!.Value);
+    }
+
+    [Fact]
+    public void TaskInstalledByAnotherAccountRunsAsSystemAtBoot()
+    {
+        var xml = System.Xml.Linq.XDocument.Parse(ServiceInstaller.BuildTaskXml(@"C:\FastFind\FastFind.Service.exe", "S-1-5-21-1-2-3-1001", runAsSystem: true));
+        var principal = xml.Root!.Element(Ns + "Principals")!.Element(Ns + "Principal")!;
+        Assert.Equal("S-1-5-18", principal.Element(Ns + "UserId")!.Value);
+        Assert.Null(principal.Element(Ns + "LogonType"));
+        Assert.NotNull(xml.Root.Element(Ns + "Triggers")!.Element(Ns + "BootTrigger"));
+        // It still serves the user it was installed for.
+        Assert.Equal("run --user S-1-5-21-1-2-3-1001", xml.Root.Element(Ns + "Actions")!.Element(Ns + "Exec")!.Element(Ns + "Arguments")!.Value);
+    }
+
+    [Fact]
+    public void TaskNameIsPerUser()
+        => Assert.NotEqual(ServiceInstaller.TaskName("S-1-5-21-1-2-3-1001"), ServiceInstaller.TaskName("S-1-5-21-1-2-3-1002"));
+}

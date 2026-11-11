@@ -6,6 +6,7 @@
     <Project Path="src/FastFind.Service/FastFind.Service.csproj" />
   </Folder>
   <Folder Name="/tests/">
+    <Project Path="tests/FastFind.App.Tests/FastFind.App.Tests.csproj" />
     <Project Path="tests/FastFind.Core.Tests/FastFind.Core.Tests.csproj" />
   </Folder>
 </Solution>

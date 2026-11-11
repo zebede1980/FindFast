@@ -138,8 +138,9 @@ public static class FileOperations
                 case Kind.Copy:
                     flags |= FOF_ALLOWUNDO | FOFX_ADDUNDORECORD;
                     // A copy that lands beside its source needs a new name rather than an overwrite prompt.
-                    if (folder != null && items.Any(p => string.Equals(Path.GetDirectoryName(p.TrimEnd('\\')), folder.TrimEnd('\\'), StringComparison.OrdinalIgnoreCase)
-                                                         || string.Equals(Path.GetDirectoryName(p.TrimEnd('\\')), folder, StringComparison.OrdinalIgnoreCase)))
+                    if (folder != null && items.Any(p => string.Equals(
+                            Path.TrimEndingDirectorySeparator(Path.GetDirectoryName(Path.TrimEndingDirectorySeparator(p)) ?? ""),
+                            Path.TrimEndingDirectorySeparator(folder), StringComparison.OrdinalIgnoreCase)))
                         flags |= FOF_RENAMEONCOLLISION | FOFX_PRESERVEFILEEXTENSIONS;
                     break;
                 case Kind.Move:

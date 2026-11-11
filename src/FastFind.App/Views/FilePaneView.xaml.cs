@@ -1100,8 +1100,11 @@ public partial class FilePaneView : UserControl
         if (vm == null) { e.Handled = true; return; }
         var rows = SelectedRows();
 
-        // Shift+right-click goes straight to the full Windows menu.
-        if (Keyboard.Modifiers.HasFlag(ModifierKeys.Shift))
+        // Opened from the keyboard (Menu key or Shift+F10) the event carries no mouse position.
+        bool fromKeyboard = e.CursorLeft < 0 && e.CursorTop < 0;
+        if (fromKeyboard) _menuAnchor = default;
+        // Shift+right-click goes straight to the full Windows menu. (Shift+F10 is just the keyboard way to open ours.)
+        if (!fromKeyboard && Keyboard.Modifiers.HasFlag(ModifierKeys.Shift))
         {
             e.Handled = true;
             ShowWindowsMenu(rows, PointToScreen(Mouse.GetPosition(this)), extended: true);

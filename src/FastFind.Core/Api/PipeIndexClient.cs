@@ -134,7 +134,12 @@ public sealed class PipeIndexClient : IIndexService
         return task.GetAwaiter().GetResult();
     }
 
-    private void Post(Op op, Action<BinaryWriter>? body) => Send(op, body, out _, expectResponse: false);
+    private void Post(Op op, Action<BinaryWriter>? body)
+    {
+        var task = Send(op, body, out _, expectResponse: false);
+        // One-way: nobody waits for it, so a failure (the service has gone) must not resurface later as an unobserved exception.
+        if (task.IsFaulted) _ = task.Exception;
+    }
 
     public async Task<IResultSet> SearchAsync(SearchRequest request, CancellationToken ct = default)
     {

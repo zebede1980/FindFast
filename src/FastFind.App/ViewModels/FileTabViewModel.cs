@@ -499,6 +499,7 @@ public sealed class FileTabViewModel : ObservableObject, IDisposable
             if (version != _searchVersion || _disposed)
             {
                 if (t.IsCompletedSuccessfully) t.Result.Set.Dispose();
+                else if (t.IsFaulted) _ = t.Exception; // a superseded search that failed is of no interest, but must be observed
                 return;
             }
             IsSearching = false;
@@ -627,6 +628,7 @@ public sealed class FileTabViewModel : ObservableObject, IDisposable
         if (!App.Settings.ShowFolderSizes) return;
         _index.GetFolderSizesAsync(location).ContinueWith(t =>
         {
+            if (t.IsFaulted) _ = t.Exception; // observed: sizes are optional, a failed lookup just leaves the column empty
             if (_disposed || !t.IsCompletedSuccessfully || !ReferenceEquals(_listing, listing) || _listingStale) return;
             // Sizes arrive after the listing is on screen; re-run so the column fills in and a size sort is right.
             if (listing.ApplyFolderSizes(t.Result)) Refresh();

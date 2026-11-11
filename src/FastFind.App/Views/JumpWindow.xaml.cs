@@ -72,6 +72,7 @@ public partial class JumpWindow : Window
         var request = new SearchRequest { Text = text, Kind = EntryKind.Folder, MatchPath = text.Contains('\\'), Sort = SortField.Relevance };
         _main.Index.SearchAsync(request, cts.Token).ContinueWith(t =>
         {
+            if (t.IsFaulted) _ = t.Exception; // observed: the known places are still offered when the index cannot answer
             if (cts.IsCancellationRequested || _closing) { if (t.IsCompletedSuccessfully) t.Result.Dispose(); return; }
             var results = new List<Target>();
             if (asPath.Length > 0 && Directory.Exists(asPath)) results.Add(new Target("\uE8DE", PathUtil.LeafName(asPath), asPath));

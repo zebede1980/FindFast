@@ -16,6 +16,11 @@ public sealed class VolumeIndex
     private int _live;
     private readonly Dictionary<ulong, int> _byKey;
     private int[]? _nameOrder;
+    /// <summary>Entries added or renamed since the name order was last built; they are merged in on demand.</summary>
+    private readonly HashSet<int> _orderDirty = new();
+    private readonly object _orderGate = new();
+    /// <summary>Above this many pending changes a full re-sort is as cheap as a merge.</summary>
+    private const int MaxIncrementalOrderChanges = 20_000;
     private ulong _nextSyntheticKey = 1UL << 62;
     private long _version;
     private long _folderSizeVersion = -1;
@@ -174,7 +179,7 @@ public sealed class VolumeIndex
         _byKey[key] = i;
         _children?.TryAdd(new ChildKey(parent, name), i);
         _live++;
-        _nameOrder = null;
+        if (_nameOrder != null) _orderDirty.Add(i); // placed into the sorted order at the next search, without a full re-sort
         _version++;
         return i;
     }
@@ -187,7 +192,7 @@ public sealed class VolumeIndex
         _names[i] = null;
         _dirPaths[i] = null;
         _live--;
-        _nameOrder = null;
+        _orderDirty.Remove(i); // the sorted order stays valid: readers skip dead slots, and the next merge drops them
         _version++;
     }
 
@@ -223,7 +228,7 @@ public sealed class VolumeIndex
         _meta[i].Parent = newParent;
         _children?.TryAdd(new ChildKey(newParent, newName), i);
         if (IsDirectory(i)) Array.Clear(_dirPaths, 0, _count);
-        _nameOrder = null;
+        if (_nameOrder != null) _orderDirty.Add(i);
         _version++;
     }
 
@@ -337,14 +342,58 @@ public sealed class VolumeIndex
 
     // ---- name ordering ----
 
-    /// <summary>Indices of live entries sorted by name (case-insensitive). Built lazily; invalidated by any mutation.</summary>
+    /// <summary>
+    /// Indices of entries sorted by name (case-insensitive). Built lazily. Changes since the last build are merged in
+    /// rather than re-sorting everything, so searching stays fast while files are being created and renamed. The array
+    /// may still contain entries deleted since it was built; readers skip those (their name is null).
+    /// Caller holds the read lock.
+    /// </summary>
     public int[] EnsureNameOrder()
     {
         var order = _nameOrder;
-        if (order != null) return order;
-        order = BuildNameOrder();
-        _nameOrder = order;
-        return order;
+        if (order != null && _orderDirty.Count == 0) return order;
+        // Several searches can arrive here at once under the shared read lock; only one should do the work.
+        lock (_orderGate)
+        {
+            order = _nameOrder;
+            if (order == null || _orderDirty.Count > MaxIncrementalOrderChanges) order = BuildNameOrder();
+            else if (_orderDirty.Count > 0) order = MergeNameOrder(order);
+            // Publish the new order before clearing the pending set, so a search on the fast path never sees "nothing pending" with the old order.
+            _nameOrder = order;
+            _orderDirty.Clear();
+            return order;
+        }
+    }
+
+    /// <summary>One linear pass: drops dead and moved entries from the old order and slots the changed ones into place.</summary>
+    private int[] MergeNameOrder(int[] order)
+    {
+        var names = _names;
+        var changed = new List<int>(_orderDirty.Count);
+        foreach (int i in _orderDirty) if ((uint)i < (uint)_count && names[i] != null) changed.Add(i);
+        changed.Sort((a, b) => string.Compare(names[a], names[b], StringComparison.OrdinalIgnoreCase));
+
+        var result = new int[_live];
+        int o = 0, c = 0;
+        foreach (int idx in order)
+        {
+            var name = names[idx];
+            if (name == null || _orderDirty.Contains(idx)) continue;
+            while (c < changed.Count && string.Compare(names[changed[c]], name, StringComparison.OrdinalIgnoreCase) <= 0)
+            {
+                if (o == result.Length) return BuildNameOrder();
+                result[o++] = changed[c++];
+            }
+            if (o == result.Length) return BuildNameOrder();
+            result[o++] = idx;
+        }
+        while (c < changed.Count)
+        {
+            if (o == result.Length) return BuildNameOrder();
+            result[o++] = changed[c++];
+        }
+        // Any mismatch means the bookkeeping was wrong somewhere: fall back to the full sort rather than return a bad order.
+        return o == result.Length ? result : BuildNameOrder();
     }
 
     public bool IsNameOrderReady => _nameOrder != null;

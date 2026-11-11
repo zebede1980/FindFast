@@ -8,7 +8,13 @@ using FastFind.Core.Search;
 //   FastFind.Cli [--walk] [--root C:\] [query...]
 // Builds an index (MFT when elevated, folder walk otherwise), prints stats, runs the query and an interactive loop.
 
+//   FastFind.Cli --service [--max N] query...
+// Sends the query to the running index service over its named pipe instead of building an index here: the same
+// API the FastFind window uses, so scripts and other tools can search instantly too.
+
 bool forceWalk = false;
+bool useService = false;
+int max = 20;
 string? root = null;
 var queryParts = new List<string>();
 for (int i = 0; i < args.Length; i++)
@@ -16,9 +22,28 @@ for (int i = 0; i < args.Length; i++)
     switch (args[i])
     {
         case "--walk": forceWalk = true; break;
-        case "--root": root = args[++i]; break;
+        case "--service": useService = true; break;
+        case "--max" when i + 1 < args.Length: int.TryParse(args[++i], out max); break;
+        case "--root" when i + 1 < args.Length: root = args[++i]; break;
         default: queryParts.Add(args[i]); break;
     }
+}
+
+if (useService)
+{
+    using var client = FastFind.Core.Api.PipeIndexClient.TryConnect(FastFind.Core.Api.PipeProtocol.PipeName(FastFind.Core.Api.PipeProtocol.CurrentUserSid()), 2000);
+    if (client == null)
+    {
+        Console.Error.WriteLine("The FastFind index service is not running. Install it from FastFind's Settings, or start FastFind.Service.exe.");
+        return 2;
+    }
+    foreach (var v in client.Volumes) Console.Error.WriteLine($"{v.Root} {v.Status} {v.Entries:N0} entries ({v.Mode})");
+    using var set = await client.SearchAsync(new FastFind.Core.Api.SearchRequest { Text = string.Join(' ', queryParts) });
+    Console.Error.WriteLine($"{set.Count:N0} results in {set.Elapsed.TotalMilliseconds:F1} ms{(set.Error != null ? " (" + set.Error + ")" : "")}");
+    // Paths go to standard output (one per line) so the command can be piped; everything else goes to standard error.
+    foreach (var e in set.GetRows(0, max <= 0 ? set.Count : max))
+        if (e.Name != null) Console.WriteLine(e.FullPath);
+    return 0;
 }
 
 Console.WriteLine($"Elevated: {Elevation.IsElevated}");
@@ -78,3 +103,4 @@ while (true)
     if (queryParts.Count > 0) break;
     line = null;
 }
+return 0;

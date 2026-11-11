@@ -115,7 +115,7 @@ public static class ShellContextMenu
 
     /// <summary>
     /// Shows the shell menu for the given items at a screen position (device pixels) and runs whatever is picked.
-    /// Returns the canonical verb that was chosen when the caller should handle it itself ("rename"), otherwise null.
+    /// Returns the canonical verb that was chosen ("rename" is left for the caller to carry out), or null if the menu was dismissed.
     /// Only items in the same folder as the first one are included: the shell builds a menu per folder.
     /// </summary>
     public static string? ShowForItems(Window owner, IReadOnlyList<string> paths, Point screenPoint, bool extended)
