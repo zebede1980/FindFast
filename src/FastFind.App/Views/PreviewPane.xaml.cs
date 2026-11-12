@@ -27,6 +27,7 @@ public partial class PreviewPane : UserControl
     private int _pendingCount;
     private string _pendingSummary = "";
     private int _version;
+    private CancellationTokenSource? _thumbnailCancel;
 
     public PreviewPane()
     {
@@ -55,6 +56,9 @@ public partial class PreviewPane : UserControl
     private void Render()
     {
         int version = ++_version;
+        // Stop waiting for the thumbnail of whatever was shown before.
+        try { _thumbnailCancel?.Cancel(); } catch (ObjectDisposedException) { }
+        _thumbnailCancel = null;
         var row = _pending;
         Labels.Children.Clear();
         Values.Children.Clear();
@@ -86,8 +90,12 @@ public partial class PreviewPane : UserControl
         AddDetail("Location", row.Directory);
 
         string path = row.FullPath;
-        ShellThumbnails.GetAsync(path, 512).ContinueWith(t =>
+        var cancel = _thumbnailCancel = new CancellationTokenSource();
+        // A thumbnail Windows is still making (files in OneDrive, mostly) arrives a moment later: its large icon stands in until then.
+        Action<System.Windows.Media.ImageSource> interim = icon => Dispatcher.BeginInvoke(() => { if (version == _version) Thumb.Source = icon; });
+        ShellThumbnails.GetAsync(path, 512, interim, cancel.Token).ContinueWith(t =>
         {
+            cancel.Dispose();
             if (version != _version || t.Result == null) return;
             Thumb.Source = t.Result;
         }, TaskScheduler.FromCurrentSynchronizationContext());
