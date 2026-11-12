@@ -44,6 +44,12 @@ public sealed class Settings
     /// <summary>Ask before sending items to the Recycle Bin.</summary>
     public bool ConfirmRecycle { get; set; } = true;
 
+    /// <summary>The disk usage window: its size, and whether the biggest folders are named on the map.</summary>
+    public double UsageWindowWidth { get; set; } = 1280;
+    public double UsageWindowHeight { get; set; } = 860;
+    public bool UsageWindowMaximized { get; set; }
+    public bool UsageShowNames { get; set; } = true;
+
     private static readonly string FilePath = Path.Combine(Logger.Directory, "settings.json");
     private static readonly JsonSerializerOptions Options = new() { WriteIndented = true, DefaultIgnoreCondition = JsonIgnoreCondition.Never };
 

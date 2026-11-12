@@ -12,21 +12,74 @@ using FastFind.Core.Search;
 // Sends the query to the running index service over its named pipe instead of building an index here: the same
 // API the FastFind window uses, so scripts and other tools can search instantly too.
 
+//   FastFind.Cli --usage <folder> [--analyse] [--walk] [--max N]
+// Adds up the space under a folder (from the index service, or from disk with --walk) and prints its largest contents;
+// with --analyse, also the space each application takes and what could be removed.
+
 bool forceWalk = false;
 bool useService = false;
 int max = 20;
 string? root = null;
+string? usage = null;
+bool analyse = false;
 var queryParts = new List<string>();
 for (int i = 0; i < args.Length; i++)
 {
     switch (args[i])
     {
+        case "--usage" when i + 1 < args.Length: usage = args[++i]; break;
+        case "--analyse": case "--analyze": analyse = true; break;
         case "--walk": forceWalk = true; break;
         case "--service": useService = true; break;
         case "--max" when i + 1 < args.Length: int.TryParse(args[++i], out max); break;
         case "--root" when i + 1 < args.Length: root = args[++i]; break;
         default: queryParts.Add(args[i]); break;
     }
+}
+
+if (usage != null)
+{
+    string folder = FastFind.Core.Browse.PathUtil.Normalize(usage);
+    if (folder.Length == 0 || !Directory.Exists(folder)) { Console.Error.WriteLine($"'{usage}' is not a folder."); return 2; }
+    var sw = Stopwatch.StartNew();
+    FastFind.Core.Usage.SizeTree? tree = null;
+    if (!forceWalk)
+    {
+        using var client = FastFind.Core.Api.PipeIndexClient.TryConnect(FastFind.Core.Api.PipeProtocol.PipeName(FastFind.Core.Api.PipeProtocol.CurrentUserSid()), 2000);
+        if (client != null && client.Volumes.Any(v => v.Covers(folder)))
+            tree = await FastFind.Core.Usage.SizeTreeLoader.FromIndexAsync(client, folder);
+        if (tree == null) Console.Error.WriteLine("The index service has nothing for this folder; reading the disk instead.");
+    }
+    bool fromDisk = tree == null;
+    tree ??= FastFind.Core.Usage.SizeTreeLoader.FromDisk(folder);
+    Console.Error.WriteLine($"{tree.Count - 1:N0} entries {(fromDisk ? "read from disk" : "from the index")} in {sw.Elapsed.TotalSeconds:F2}s");
+    Console.WriteLine($"{SizeParser.Format(tree.Size(0)),10}  {tree.FileCount(0),9:N0} files  {tree.RootPath}");
+    foreach (int child in tree.Children(0)[..Math.Min(max, tree.ChildCount(0))])
+        Console.WriteLine($"{SizeParser.Format(tree.Size(child)),10}  {(tree.IsDirectory(child) ? tree.FileCount(child).ToString("N0") + " files" : ""),15}  {tree.Name(child)}");
+    if (tree.CloudFiles > 0) Console.WriteLine($"plus {SizeParser.Format(tree.CloudBytes)} in {tree.CloudFiles:N0} online-only files that take no space on this disk");
+    Console.WriteLine();
+    foreach (var stat in tree.ExtensionStats().Take(10))
+        Console.WriteLine($"{SizeParser.Format(stat.Bytes),10}  {stat.Files,9:N0} files  .{stat.Extension,-10} {FastFind.Core.Usage.FileCategories.Name(stat.Category)}");
+    if (analyse)
+    {
+        sw.Restart();
+        var report = FastFind.Core.Usage.UsageAnalyzer.Analyze(tree, FastFind.Core.Usage.UsageEnvironment.Current());
+        Console.Error.WriteLine($"analysed in {sw.ElapsedMilliseconds} ms");
+        Console.WriteLine($"\nApplications: {report.Apps.Count:N0} take {SizeParser.Format(report.AppBytes)}");
+        foreach (var app in report.Apps.Take(max))
+            Console.WriteLine($"{SizeParser.Format(app.Total),10}  {app.Name,-38} program {SizeParser.Format(app.Program),9}  data {SizeParser.Format(app.Data),9}  caches {SizeParser.Format(app.Caches),9}  logs {SizeParser.Format(app.Logs),9}"
+                + (app.ClearableBytes > 0 ? $"  (clear {SizeParser.Format(app.ClearableBytes)})" : ""));
+        Console.WriteLine($"\nCould be removed ({SizeParser.Format(report.SafeBytes)} of it safely):");
+        // Each with the biggest of the folders it covers, so the judgement can be checked.
+        int shown = int.TryParse(Environment.GetEnvironmentVariable("FASTFIND_CLI_FOLDERS"), out int n) ? n : 3;
+        foreach (var c in report.Candidates.OrderBy(c => c.Safety).ThenByDescending(c => c.Bytes))
+        {
+            Console.WriteLine($"{SizeParser.Format(c.Bytes),10}  {c.Files,8:N0} files  [{c.Safety}/{c.Action}] {c.Title}");
+            foreach (int node in c.Nodes.OrderByDescending(tree.Size).Take(shown))
+                Console.WriteLine($"{"",12}{SizeParser.Format(tree.Size(node)),10}  {tree.GetPath(node)}");
+        }
+    }
+    return 0;
 }
 
 if (useService)

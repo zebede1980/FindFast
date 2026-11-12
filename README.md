@@ -42,6 +42,39 @@ A tab is a **location plus a query**:
   approach Everything uses), a few milliseconds across a million entries.
 * **Folder sizes**: the Size column shows each folder's total size, and sorting by it shows where the space went.
   `foldersize:>1gb` finds large folders anywhere.
+* **Disk usage map** (Ctrl+U, or right-click a folder or a drive): where the space went, in the manner of WinDirStat.
+  The top half is the folder tree sorted by size, with each item's share of its folder; beside it, the file types
+  taking the most room. The bottom half is a treemap: every file is a block whose area is its size, nested inside its
+  folder's block and shaded so the nesting reads as depth.
+  * Click a block to find that file in the tree; click it again to step out to its folder, and again to the folder
+    above. Select something in the tree and the map spotlights it.
+  * Double-click, or scroll the wheel, to zoom the map into a folder; Backspace, the wheel or the breadcrumb zooms
+    back out. The file type list and the legend follow the folder on show.
+  * Colour is the kind of file (system, archives, applications, data, images, code, documents, media), the same in
+    every map; each extension has its own shade of its kind's colour. Click a kind in the legend, or a type in the
+    list, to pick those files out and dim the rest.
+  * Right-click for Show in FastFind, zoom, copy path, delete and properties. Deleting updates the map on the spot.
+  * A whole drive takes a few seconds, because the sizes come from the index; a folder the index does not cover is
+    read from disk instead. Online-only OneDrive files are listed but counted as taking no space, since they do not.
+  * **Space by kind**: a bar above the map splits the folder on show into system files, archives, applications,
+    data, images, code, documents and media, with the size of each beside it.
+  * **Applications** (tab on the right): what each application takes, gathered from everywhere Windows scatters it
+    (Program Files, your application data, ProgramData, Store packages, dot-folders in your profile) and split into
+    program, data, caches and logs. Click one to light up all its folders on the map; **Clear** empties its caches.
+  * **Clean up** (tab on the right): what could go, in four groups.
+    * *Safe to clear*: application caches, temporary files more than two days old, crash dumps. One click and a
+      confirmation; programs make these again as they need them.
+    * *Can be rebuilt*: the NuGet, Gradle, Maven and Cargo stores, and `node_modules`, `bin` and `obj` folders, the
+      last three only inside a git working copy (the same folder names inside a released package or an installed
+      program are part of that product and are never offered).
+    * *Windows looks after these*: update downloads, a previous Windows installation, system dumps, the hibernation
+      file. FastFind does not delete these; it opens Disk Clean-up or gives you the command.
+    * *Yours to review*: the Recycle Bin, installers and old items in Downloads, large files untouched for two
+      years. These are only pointed out.
+  * What a clean-up may touch is checked twice, by the analysis and again at the moment of deleting: never Windows,
+    Program Files or ProgramData, never your profile, Documents, Downloads or anything above them, never through a
+    link, and only files that were measured and shown (anything that arrived since is left, as is anything in use).
+    Clean-ups delete for good rather than to the Recycle Bin, and each one is written to `fastfind.log`.
 * **Jump to any folder** (Ctrl+P): type a few letters of a folder's name from anywhere on any indexed drive.
 * **Flat view of a subtree** in milliseconds, with every filter and sort available.
 * **Everything-compatible query language**: `space` = AND, `|` = OR, `!` = NOT, quotes, `*`/`?` wildcards, and
@@ -101,6 +134,13 @@ The same pipe is available to anything else. The quickest way is the CLI:
 FastFind.Cli.exe --service --max 50 "ext:cs size:>10kb dm:last30days"
 ```
 
+```powershell
+# the biggest things in a folder and the file types using the most space, from the index (add --walk to read the disk)
+FastFind.Cli.exe --usage C:\Users --max 15
+# the same, plus what each application takes and what could be removed (it only reports; it never deletes)
+FastFind.Cli.exe --usage C:\ --analyse
+```
+
 From .NET, reference `FastFind.Core` and use `PipeIndexClient.TryConnect(PipeProtocol.PipeName(PipeProtocol.CurrentUserSid()))`,
 then `SearchAsync(new SearchRequest { Text = "..." })` and page rows with `GetRows`. The wire format is described at
 the top of `PipeProtocol.cs`.
@@ -127,9 +167,14 @@ dotnet test
 
 * `FastFind.Core.Tests`: query parser and search engine, size/date parsing, live index mutation and the incremental
   name order, folder sizes, live folder listing, path handling, the MFT record parser (synthetic records), the pipe
-  protocol end to end (a real named pipe with a fake index behind it) and the scheduled-task definition.
+  protocol end to end (a real named pipe with a fake index behind it), the scheduled-task definition, and the disk
+  usage tree (totals, ordering, removal, file kinds, reading from the index, through the pipe and from disk), and the
+  usage analysis on a made-up machine (applications gathered across folders, what is and is not offered for clean-up).
 * `FastFind.App.Tests`: tab behaviour on a real temporary folder (listing, filtering, history, subfolders, live
-  refresh, folder sizes), zip round trip, export, and name validation.
+  refresh, folder sizes), zip round trip, export, name validation, the disk usage map's layout and shading (every
+  pixel accounted for, areas in proportion, blocks nested in their folders), the rows of its tree, thumbnail
+  orientation, and clean-ups run for real against a made-up machine in a temporary folder (files in use, new files,
+  files that arrived after measuring, links and protected folders are all left alone).
 
 ## Project layout
 
@@ -139,9 +184,11 @@ dotnet test
 | `src/FastFind.Core/Indexing` | In-memory volume index, directory-walk indexer, watcher, cache, volume manager |
 | `src/FastFind.Core/Search` | Query model, parser, size/date parsing, parallel search engine |
 | `src/FastFind.Core/Browse` | Live folder listing and path helpers |
+| `src/FastFind.Core/Usage` | Disk usage: the size tree, its loaders (index or disk) and the file kinds |
 | `src/FastFind.Core/Api` | `IIndexService`, the in-process implementation, the named-pipe server and client, the service installer |
 | `src/FastFind.Service` | The elevated index host |
 | `src/FastFind.App` | WPF UI (Fluent theme): panes, tabs, sidebar, preview, file operations, shell integration |
+| `src/FastFind.App/Treemap` | The disk usage map: squarified layout, cushion shading, colours, and the control that shows it |
 | `src/FastFind.Cli` | Console harness for timing the engine and querying the service |
 | `tests/` | xUnit tests |
 

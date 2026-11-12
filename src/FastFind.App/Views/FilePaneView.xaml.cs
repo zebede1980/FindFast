@@ -574,6 +574,7 @@ public partial class FilePaneView : UserControl
                 case Key.N when shift: NewFolder(); return true;
                 case Key.N: NewFile(); return true;
                 case Key.S: ExportResults(selectedOnly: shift); return true;
+                case Key.U when !shift: ShowDiskUsage(inList); return true;
             }
         }
         if (key == Key.F5 && mods == ModifierKeys.None && (!inList || MainVm?.IsDualPane != true || SelectedRows().Count == 0)) { vm.Reload(); return true; }
@@ -848,6 +849,17 @@ public partial class FilePaneView : UserControl
         string? folder = row.IsDirectory ? row.FullPath : ShellLinks.FolderTarget(row.FullPath);
         if (folder != null) main.OpenInOtherPane(pane, folder);
         else if (row.Directory.Length > 0) main.OpenInOtherPane(pane, row.Directory, row.Name);
+    }
+
+    /// <summary>Ctrl+U: the disk usage map of the selected folder, or of the folder on show when no single folder is selected.</summary>
+    private void ShowDiskUsage(bool useSelection)
+    {
+        var vm = Vm;
+        if (vm == null) return;
+        var rows = useSelection ? SelectedRows() : Array.Empty<FileRow>();
+        if (rows.Count == 1 && rows[0] is { IsDirectory: true, IsDeleted: false } folder) UsageWindow.ShowFor(folder.FullPath);
+        else if (!vm.IsEverywhere) UsageWindow.ShowFor(vm.Location);
+        else vm.SetTransientStatus("Select a folder (or open one) to see its disk usage map.");
     }
 
     // ---- command bar ----
@@ -1185,6 +1197,7 @@ public partial class FilePaneView : UserControl
             bool pinned = main?.IsPinned(first.FullPath) == true;
             items.Add(Item(pinned ? "Unpin from sidebar" : "Pin to sidebar", () => { if (pinned) main?.Unpin(first.FullPath); else main?.Pin(first.FullPath); }));
             items.Add(Item("Open in Terminal", () => ShellOps.OpenTerminal(first.FullPath)));
+            items.Add(Item("Disk _usage map", () => UsageWindow.ShowFor(first.FullPath), "Ctrl+U"));
         }
         if (single) items.Add(Item("Show in Windows Explorer", () => ShellOps.ShowInExplorer(first.FullPath), "Ctrl+Shift+E"));
         items.Add(new Separator());
@@ -1215,6 +1228,7 @@ public partial class FilePaneView : UserControl
         if (Pane is { } here) items.Add(Item("Open this folder in other pa_ne", () => main?.OpenInOtherPane(here, folder)));
         items.Add(Item("Open in Terminal", () => ShellOps.OpenTerminal(folder)));
         items.Add(Item("Open in Windows Explorer", () => ShellOps.OpenFolder(folder)));
+        items.Add(Item("Disk _usage map of this folder", () => UsageWindow.ShowFor(folder), "Ctrl+U"));
         items.Add(new Separator());
         items.Add(Item("Export list…", () => ExportResults(false), "Ctrl+S"));
         items.Add(new Separator());

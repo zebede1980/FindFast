@@ -417,6 +417,7 @@ public partial class MainWindow : Window
         {
             Add("Pin to sidebar", () => ViewModel.Pin(PathUtil.Normalize(item.Path)));
         }
+        Add("Disk usage map", () => UsageWindow.ShowFor(item.Path));
         Add("Copy path", () => ShellOps.CopyText(item.Path));
         Add("Open in Terminal", () => ShellOps.OpenTerminal(item.Path));
         Add("Open in Windows Explorer", () => ShellOps.OpenFolder(item.Path));

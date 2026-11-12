@@ -62,6 +62,7 @@
                 <DockPanel><TextBlock Style="{StaticResource Key}" Text="Alt+Enter" /><TextBlock Style="{StaticResource Desc}" Text="Properties." /></DockPanel>
                 <DockPanel><TextBlock Style="{StaticResource Key}" Text="Shift+Right-click" /><TextBlock Style="{StaticResource Desc}" Text="The full Windows menu (Send to, 7-Zip, Git and so on). It is also at the bottom of the normal right-click menu." /></DockPanel>
                 <DockPanel><TextBlock Style="{StaticResource Key}" Text="Ctrl+S  Ctrl+Shift+S" /><TextBlock Style="{StaticResource Desc}" Text="Export the list  /  the selection as CSV, text or an Everything file list." /></DockPanel>
+                <DockPanel><TextBlock Style="{StaticResource Key}" Text="Ctrl+U" /><TextBlock Style="{StaticResource Desc}" Text="Disk usage map of the selected folder (or the folder on show, or a drive from the sidebar's right-click menu): a tree sorted by size above a map where every file is a block as big as the space it takes. Click a block to find it in the tree, click again to step out to its folder, double-click or scroll to zoom, Backspace to zoom out. The panel on its right lists file types, what each application takes, and what could be cleaned up." /></DockPanel>
                 <DockPanel><TextBlock Style="{StaticResource Key}" Text="foldersize:&gt;1gb" /><TextBlock Style="{StaticResource Desc}" Text="Find folders by their total size. Folder sizes come from the index, so sorting by Size shows where the space went." /></DockPanel>
             </StackPanel>
 
