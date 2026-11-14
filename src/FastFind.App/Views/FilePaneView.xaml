@@ -129,6 +129,10 @@
         <!-- Command bar: the everyday file actions on the left, view options on the right -->
         <DockPanel Grid.Row="2" Margin="-3,5,0,0">
             <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
+                <ToggleButton x:Name="LockToggle" Style="{StaticResource PillToggle}" Height="30" IsChecked="{Binding IsLocked}" AutomationProperties.Name="Lock tab"
+                              ToolTip="Lock this tab: folders you open from it open in the other pane, so you keep your place here (Ctrl+Shift+L)">
+                    <TextBlock FontFamily="{StaticResource IconFont}" Text="&#xE72E;" FontSize="13" />
+                </ToggleButton>
                 <ToggleButton x:Name="SubfoldersToggle" Style="{StaticResource PillToggle}" Height="30" IsChecked="{Binding Recursive}" AutomationProperties.Name="Include subfolders"
                               ToolTip="Include subfolders: show this folder and everything beneath it as one list (Ctrl+Shift+R)"
                               Visibility="{Binding IsEverywhere, Converter={StaticResource InverseBoolToVisibility}}">

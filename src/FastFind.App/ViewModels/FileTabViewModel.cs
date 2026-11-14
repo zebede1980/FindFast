@@ -38,6 +38,7 @@ public sealed class FileTabViewModel : ObservableObject, IDisposable
 
     private string _location = "";
     private bool _recursive;
+    private bool _isLocked;
     private readonly List<string> _back = new();
     private readonly List<string> _forward = new();
 
@@ -122,6 +123,16 @@ public sealed class FileTabViewModel : ObservableObject, IDisposable
         }
     }
 
+    /// <summary>
+    /// A locked tab holds its place: folders opened from it open in the other pane instead, so you can work through a
+    /// folder's contents one by one. It also stops the other pane sending folders into this tab.
+    /// </summary>
+    public bool IsLocked
+    {
+        get => _isLocked;
+        set { if (Set(ref _isLocked, value)) OnPropertyChanged(nameof(TabGlyph)); }
+    }
+
     public bool CanGoBack => _back.Count > 0;
     public bool CanGoForward => _forward.Count > 0;
     public bool CanGoUp => !IsEverywhere && PathUtil.Parent(_location) != null;
@@ -143,8 +154,8 @@ public sealed class FileTabViewModel : ObservableObject, IDisposable
         }
     }
 
-    /// <summary>Icon shown on the tab: a magnifier for a search across everything, a folder otherwise.</summary>
-    public string TabGlyph => IsEverywhere ? "\uE721" : _recursive ? "\uE8B7" : "\uE838";
+    /// <summary>Icon shown on the tab: a padlock when locked, a magnifier for a search across everything, a folder otherwise.</summary>
+    public string TabGlyph => _isLocked ? "\uE72E" : IsEverywhere ? "\uE721" : _recursive ? "\uE8B7" : "\uE838";
 
     public string SearchPlaceholder => Mode switch
     {
@@ -635,7 +646,7 @@ public sealed class FileTabViewModel : ObservableObject, IDisposable
         }, CancellationToken.None, TaskContinuationOptions.None, TaskScheduler.FromCurrentSynchronizationContext());
     }
 
-    public TabState ToState() => new() { Location = _location, Query = _queryText, Recursive = _recursive };
+    public TabState ToState() => new() { Location = _location, Query = _queryText, Recursive = _recursive, Locked = _isLocked };
 
     /// <summary>What assistive technology announces for the tab.</summary>
     public override string ToString() => IsEverywhere ? Title : $"{Title} ({_location})";

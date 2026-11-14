@@ -148,12 +148,13 @@ public sealed class MainViewModel : ObservableObject
     /// the active one, so you can carry on where you were.
     /// </summary>
     /// <param name="select">An item in the folder to select once it has loaded (used to show a file in its folder).</param>
-    /// <param name="newTab">Open in a new tab of the other pane instead of replacing what its current tab shows.</param>
+    /// <param name="newTab">Open in a new tab of the other pane instead of replacing what its current tab shows. A locked
+    /// tab on the other side always gets a new tab beside it rather than being navigated away.</param>
     public void OpenInOtherPane(PaneViewModel from, string folder, string? select = null, bool newTab = false)
     {
         if (!IsDualPane) IsDualPane = true;
         var other = ReferenceEquals(from, Right) ? Left : Right;
-        if (!newTab && other.SelectedTab is { } tab) tab.Navigate(folder, select);
+        if (!newTab && other.SelectedTab is { IsLocked: false } tab) tab.Navigate(folder, select);
         else other.AddTab(folder, selectName: select);
     }
 

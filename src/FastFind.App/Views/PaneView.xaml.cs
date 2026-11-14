@@ -67,6 +67,7 @@ public partial class PaneView : UserControl
             bool pinned = pane.Main.IsPinned(tab.Location);
             Add(pinned ? "Unpin from sidebar" : "Pin to sidebar", () => { if (pinned) pane.Main.Unpin(tab.Location); else pane.Main.Pin(tab.Location); });
         }
+        Add(tab.IsLocked ? "Unlock tab" : "Lock tab (folders open in the other pane)", () => tab.IsLocked = !tab.IsLocked, "Ctrl+Shift+L");
         menu.Items.Add(new Separator());
         Add("Close tab", () => pane.CloseTab(tab), "Ctrl+W");
         Add("Close other tabs", () => { foreach (var t in pane.Tabs.Where(t => !ReferenceEquals(t, tab)).ToList()) pane.CloseTab(t); }, enabled: pane.Tabs.Count > 1);

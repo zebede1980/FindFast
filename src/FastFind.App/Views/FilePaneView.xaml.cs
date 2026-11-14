@@ -566,6 +566,7 @@ public partial class FilePaneView : UserControl
         {
             switch (key)
             {
+                case Key.L when shift: vm.IsLocked = !vm.IsLocked; return true;
                 case Key.L: BeginAddressEdit(); return true;
                 case Key.F when !shift: case Key.E when !shift: FocusSearch(); return true;
                 case Key.R when shift: vm.Recursive = !vm.Recursive; return true;
@@ -646,7 +647,7 @@ public partial class FilePaneView : UserControl
         else if (e.ChangedButton == MouseButton.XButton2) { Vm?.GoForward(); e.Handled = true; }
     }
 
-    /// <summary>Double-click opens the item; double-click on the path column goes to that folder.</summary>
+    /// <summary>Double-click opens the item; double-click on the path column goes to that folder. A locked tab sends folders to the other pane.</summary>
     private void OnRowDoubleClick(object sender, MouseButtonEventArgs e)
     {
         if (e.ChangedButton != MouseButton.Left || e.OriginalSource is not DependencyObject d) return;
@@ -655,7 +656,7 @@ public partial class FilePaneView : UserControl
         var cell = MainWindow.FindVisualParent<DataGridCell>(d);
         if (ReferenceEquals(cell?.Column, PathColumn) || ReferenceEquals(cell?.Column, FullPathColumn))
         {
-            if (row.Directory.Length > 0) { _focusGridOnResults = true; Vm?.Navigate(row.Directory, row.Name); }
+            if (row.Directory.Length > 0) GoTo(row.Directory, row.Name);
         }
         else
         {
@@ -834,7 +835,14 @@ public partial class FilePaneView : UserControl
         string? folder = row.IsDirectory ? row.FullPath : ShellLinks.FolderTarget(row.FullPath);
         if (folder == null) { ShellOps.Open(row.FullPath); return; }
         if (newTab) Pane?.AddTab(folder);
-        else { _focusGridOnResults = true; Vm?.Navigate(folder); }
+        else GoTo(folder);
+    }
+
+    /// <summary>Goes to a folder in this tab, or in the other pane when this tab is locked so it keeps its place.</summary>
+    private void GoTo(string folder, string? select = null)
+    {
+        if (Vm is { IsLocked: true } && Pane is { } pane) MainVm?.OpenInOtherPane(pane, folder, select);
+        else { _focusGridOnResults = true; Vm?.Navigate(folder, select); }
     }
 
     /// <summary>

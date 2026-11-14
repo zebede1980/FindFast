@@ -447,4 +447,38 @@ public sealed class OtherPaneTests : IDisposable
         Assert.Equal(2, main.Right.Tabs.Count);
         Assert.Equal(_old, main.Right.SelectedTab!.Location);
     });
+
+    [Fact]
+    public void ALockedTabOnTheOtherSideKeepsItsPlaceAndGetsANewTabBesideIt() => Ui.Run(async () =>
+    {
+        var main = Start(dualPane: true);
+        var locked = main.Right.SelectedTab!;
+        locked.IsLocked = true;
+
+        main.OpenInOtherPane(main.Left, _docs);
+
+        Assert.Equal(_empty, locked.Location);
+        Assert.Equal(2, main.Right.Tabs.Count);
+        await Ui.WaitFor(() => main.Right.SelectedTab!.Location == _docs, "a new right tab showing Docs");
+        Assert.False(main.Right.SelectedTab!.IsLocked);
+    });
+
+    [Fact]
+    public void TheLockIsShownOnTheTabAndSurvivesClosingAndReopening() => Ui.Run(() =>
+    {
+        var main = Start(dualPane: true);
+        var tab = main.Left.SelectedTab!;
+        string folderGlyph = tab.TabGlyph;
+
+        tab.IsLocked = true;
+        Assert.NotEqual(folderGlyph, tab.TabGlyph);
+        Assert.True(tab.ToState().Locked);
+
+        main.Left.AddTab(_docs);
+        main.Left.CloseTab(tab);
+        main.Left.ReopenClosedTab();
+        Assert.True(main.Left.SelectedTab!.IsLocked);
+        Assert.Equal(_root, main.Left.SelectedTab.Location);
+        return Task.CompletedTask;
+    });
 }

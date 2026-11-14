@@ -89,6 +89,7 @@ public sealed class TabState
     public string Location { get; set; } = "";
     public string Query { get; set; } = "";
     public bool Recursive { get; set; }
+    public bool Locked { get; set; }
 }
 
 public sealed class ColumnSetting
