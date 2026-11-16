@@ -32,6 +32,8 @@ A tab is a **location plus a query**:
   programs appear and disappear without pressing refresh.
 * **Sidebar**: search everywhere, your usual places, **pinned folders** (click "Pin current folder", drag a folder
   onto it, or right-click any folder), and drives with free space. Drop files on a place to copy or move them there.
+  A drive locked by BitLocker shows a padlock; clicking it brings up the Windows unlock prompt and opens the drive
+  once it is unlocked.
 * **Preview pane** (Alt+P): thumbnail (pictures, PDFs, Office documents where Windows has a handler), details, and
   the first lines of text files.
 * **Session restore**: the tabs you had open come back at the next launch.

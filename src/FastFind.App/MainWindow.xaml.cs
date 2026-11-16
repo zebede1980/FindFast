@@ -370,10 +370,34 @@ public partial class MainWindow : Window
                 ShellOps.OpenInExplorer(item.Path);
                 break;
             default:
-                ViewModel.Open(item.Path, newTab);
-                Dispatcher.BeginInvoke(System.Windows.Threading.DispatcherPriority.Loaded, () => ActiveView?.FocusGrid());
+                WhenUnlocked(item.Path, () =>
+                {
+                    ViewModel.Open(item.Path, newTab);
+                    Dispatcher.BeginInvoke(System.Windows.Threading.DispatcherPriority.Loaded, () => ActiveView?.FocusGrid());
+                });
                 break;
         }
+    }
+
+    private readonly HashSet<string> _unlocking = new();
+
+    /// <summary>
+    /// Runs an action that needs to read a place. If the place is on a drive locked by BitLocker, the Windows unlock
+    /// prompt is shown first and the action runs only once the drive has opened.
+    /// </summary>
+    private async void WhenUnlocked(string path, Action action)
+    {
+        if (BitLocker.LockedRoot(path) is not { } root) { action(); return; }
+        if (!_unlocking.Add(root)) return; // its prompt is already on screen
+        try
+        {
+            if (!await BitLocker.PromptUnlockAsync(root)) return;
+            App.Index.RefreshVolumes();
+            ViewModel.RefreshSidebar();
+            action();
+        }
+        catch (Exception ex) { Logger.Warn($"Opening {path} after unlocking failed: {ex.Message}"); }
+        finally { _unlocking.Remove(root); }
     }
 
     private void OnSidebarClick(object sender, RoutedEventArgs e)
@@ -401,9 +425,10 @@ public partial class MainWindow : Window
             mi.Click += (_, _) => action();
             menu.Items.Add(mi);
         }
+        if (BitLocker.LockedRoot(item.Path) != null) Add("Unlock drive…", () => WhenUnlocked(item.Path, () => { }));
         Add("Open", () => GoToSidebarItem(item, false));
         Add("Open in new tab", () => GoToSidebarItem(item, true));
-        Add("Open in other pane", () => ViewModel.OpenInOtherPane(ViewModel.ActivePane, item.Path));
+        Add("Open in other pane", () => WhenUnlocked(item.Path, () => ViewModel.OpenInOtherPane(ViewModel.ActivePane, item.Path)));
         menu.Items.Add(new Separator());
         if (item.Kind == SidebarKind.Favourite)
         {

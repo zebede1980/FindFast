@@ -313,6 +313,11 @@ public sealed class MainViewModel : ObservableObject
                     string letter = d.Name.TrimEnd('\\');
                     if (!d.IsReady)
                     {
+                        if (BitLocker.LockedRoot(d.Name) != null)
+                        {
+                            drives.Add(new SidebarItem { Glyph = "", Title = $"Locked drive ({letter})", Path = d.Name, Kind = SidebarKind.Drive, Detail = "Locked by BitLocker. Click to unlock." });
+                            continue;
+                        }
                         drives.Add(new SidebarItem { Glyph = "\uEDA2", Title = letter, Path = d.Name, Kind = SidebarKind.Drive, Detail = "Not ready" });
                         continue;
                     }
