@@ -30,6 +30,13 @@ A tab is a **location plus a query**:
   built-in menu, or directly with Shift+right-click.
 * **Folders stay up to date on their own**: each folder on show is watched, so files created or deleted by other
   programs appear and disappear without pressing refresh.
+* **Your own right-click actions** (Settings > Right-click actions…): name an entry, say what it is offered for
+  (extensions such as `ps1; psm1`, a kind such as `video`, `folder`, or `*`), and pick the program it starts. Arguments
+  can use `{path}`, `{folder}`, `{name}`, `{basename}` and `{paths}` (everything selected, handed over in one go; leaving
+  the arguments empty does the same); paths with spaces are quoted for you, and the editor shows the command it comes
+  to. Without `{paths}` the program is started once per selected item. An action can be set to run as administrator.
+  Entries appear under Open, only when everything selected fits; ones for `folder` also appear when you right-click
+  the empty part of a folder.
 * **Sidebar**: search everywhere, your usual places, **pinned folders** (click "Pin current folder", drag a folder
   onto it, or right-click any folder), and drives with free space. Drop files on a place to copy or move them there.
   A drive locked by BitLocker shows a padlock; clicking it brings up the Windows unlock prompt and opens the drive

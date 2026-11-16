@@ -48,6 +48,8 @@
             <CheckBox x:Name="ExplorerMenuBox" Content="Add &quot;Open in FastFind&quot; to the right-click menu of folders and drives in Windows" VerticalAlignment="Center"
                       Checked="OnExplorerMenuChanged" Unchecked="OnExplorerMenuChanged"
                       ToolTip="Registers a menu entry for your account only (no administrator rights needed). Untick to remove it." />
+            <Button Content="Right-click actions…" Margin="24,0,0,0" Padding="10,4" Click="OnCustomActionsClick"
+                    ToolTip="Add your own entries to FastFind's right-click menu: run a script in PowerShell, hand video files to a program, and so on" />
         </StackPanel>
 
         <StackPanel Grid.Row="4">

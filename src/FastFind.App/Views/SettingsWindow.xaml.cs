@@ -120,6 +120,8 @@ public partial class SettingsWindow : Window
         if (error != null) MessageBox.Show(this, error, "Windows integration", MessageBoxButton.OK, MessageBoxImage.Warning);
     }
 
+    private void OnCustomActionsClick(object sender, RoutedEventArgs e) => new CustomActionsWindow { Owner = this }.ShowDialog();
+
     private void OnHotkeyKeyDown(object sender, System.Windows.Input.KeyEventArgs e)
     {
         if (e.Key == System.Windows.Input.Key.Enter) { OnHotkeyChanged(sender, e); e.Handled = true; }

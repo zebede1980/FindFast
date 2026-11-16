@@ -50,6 +50,9 @@ public sealed class Settings
     public bool UsageWindowMaximized { get; set; }
     public bool UsageShowNames { get; set; } = true;
 
+    /// <summary>The user's own right-click entries, in the order they appear in the menu.</summary>
+    public List<CustomAction> CustomActions { get; set; } = new();
+
     private static readonly string FilePath = Path.Combine(Logger.Directory, "settings.json");
     private static readonly JsonSerializerOptions Options = new() { WriteIndented = true, DefaultIgnoreCondition = JsonIgnoreCondition.Never };
 
@@ -90,6 +93,22 @@ public sealed class TabState
     public string Query { get; set; } = "";
     public bool Recursive { get; set; }
     public bool Locked { get; set; }
+}
+
+/// <summary>A right-click entry the user made: a program to start with the selected items. See <see cref="CustomActions"/>.</summary>
+public sealed class CustomAction
+{
+    /// <summary>The text of the menu entry.</summary>
+    public string Name { get; set; } = "";
+    /// <summary>What it is offered for: extensions ("ps1; psm1"), kinds ("video"), "folder", or "*" for any file.</summary>
+    public string AppliesTo { get; set; } = "*";
+    public string Program { get; set; } = "";
+    /// <summary>The command line after the program, with placeholders such as {path}. Empty passes everything selected.</summary>
+    public string Arguments { get; set; } = "";
+    /// <summary>The folder the program starts in; empty for the folder the item is in.</summary>
+    public string StartIn { get; set; } = "";
+    /// <summary>Start the program elevated (Windows asks first). FastFind itself stays as it is.</summary>
+    public bool RunAsAdmin { get; set; }
 }
 
 public sealed class ColumnSetting

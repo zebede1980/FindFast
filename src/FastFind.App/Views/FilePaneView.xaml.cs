@@ -1174,6 +1174,7 @@ public partial class FilePaneView : UserControl
             items.Add(Item("Show in other pa_ne", () => OpenInOtherPane(first), "Shift+Enter"));
         }
         if (single && vm.ShowPathColumn) items.Add(Item("Go to containing _folder", () => { _focusGridOnResults = true; vm.Navigate(first.Directory, first.Name); }));
+        AddCustomActions(rows.Select(r => new CustomActions.Target(r.FullPath, r.IsDirectory)).ToList());
         items.Add(new Separator());
 
         items.Add(Item("Cu_t", () => CopyToClipboard(true), "Ctrl+X"));
@@ -1237,11 +1238,46 @@ public partial class FilePaneView : UserControl
         items.Add(Item("Open in Terminal", () => ShellOps.OpenTerminal(folder)));
         items.Add(Item("Open in Windows Explorer", () => ShellOps.OpenFolder(folder)));
         items.Add(Item("Disk _usage map of this folder", () => UsageWindow.ShowFor(folder), "Ctrl+U"));
+        AddCustomActions(new[] { new CustomActions.Target(folder, true) }, separatorFirst: true);
         items.Add(new Separator());
         items.Add(Item("Export list…", () => ExportResults(false), "Ctrl+S"));
         items.Add(new Separator());
         items.Add(Item("More options (Windows menu)…", () => ShowWindowsMenu(Array.Empty<FileRow>(), MenuAnchor(), extended: false), "Shift+Right-click"));
         items.Add(Item("P_roperties", () => ShellOps.ShowProperties(folder), "Alt+Enter"));
+    }
+
+    /// <summary>Adds the user's own entries (Settings > Right-click actions) that apply to everything in the selection.</summary>
+    private void AddCustomActions(IReadOnlyList<CustomActions.Target> targets, bool separatorFirst = false)
+    {
+        var actions = CustomActions.For(App.Settings.CustomActions, targets);
+        if (actions.Count == 0) return;
+        if (separatorFirst) RowMenu.Items.Add(new Separator());
+        foreach (var action in actions)
+        {
+            // An underscore would otherwise be taken as marking the entry's access key.
+            var item = Item(action.Name.Trim().Replace("_", "__"), () => RunCustomAction(action, targets));
+            if (action.RunAsAdmin) item.InputGestureText = "Administrator";
+            RowMenu.Items.Add(item);
+        }
+    }
+
+    /// <summary>Starting more programs than this in one go asks first: a slip with a large selection would bury the desktop in windows.</summary>
+    private const int LaunchesWithoutAsking = 10;
+
+    private void RunCustomAction(CustomAction action, IReadOnlyList<CustomActions.Target> targets)
+    {
+        var vm = Vm;
+        var launches = CustomActions.Plan(action, targets, out string? error);
+        if (error != null) { vm?.SetTransientStatus(error); return; }
+        if (launches.Count > LaunchesWithoutAsking && Window.GetWindow(this) is { } window
+            && MessageBox.Show(window, $"\"{action.Name.Trim()}\" will start {launches.Count:N0} times, once for each selected item. Carry on?",
+                "Right-click action", MessageBoxButton.OKCancel, MessageBoxImage.Question) != MessageBoxResult.OK) return;
+        foreach (var launch in launches)
+        {
+            error = CustomActions.Start(launch);
+            if (error == CustomActions.Cancelled) return;
+            if (error != null) { vm?.SetTransientStatus($"{action.Name.Trim()} failed: {error}"); return; }
+        }
     }
 
     private Point _menuAnchor;
