@@ -134,9 +134,14 @@ FastFind.exe  (normal user: UI, live folder listings, file operations)
 FastFind.Service.exe  (elevated: reads the MFT, follows the USN change journal, answers searches)
 ```
 
-* **Settings > Install index service** registers `FastFind.Service.exe` as a scheduled task that starts at sign-in
-  with the highest available privileges (one administrator prompt, once). With it, NTFS volumes index in seconds and
-  stay live from the change journal.
+* **Settings > Install index service** copies `FastFind.Service.exe` (and `FastFind.Core.dll`) to
+  `%ProgramFiles%\FastFind\Service\<your SID>` and registers that copy as a scheduled task that starts at sign-in with
+  the highest available privileges (one administrator prompt, once). With it, NTFS volumes index in seconds and stay
+  live from the change journal. Running from its own folder means the service never locks FastFind's build output,
+  and only an administrator can change the program the task runs elevated.
+* **After rebuilding or updating FastFind**, Settings offers **Update index service**: it stops the service, copies
+  the new files over and starts it again (one administrator prompt). Until then the old service keeps running; if
+  its pipe protocol no longer matches, the window falls back to its own index.
 * **Without the service** FastFind builds the index inside its own process by walking folders (minutes on a large
   drive the first time; cached under `%LOCALAPPDATA%\FastFind\cache` so later launches are searchable straight away)
   and keeps it fresh with `FileSystemWatcher`. Everything still works; folder browsing never depends on the index.

@@ -47,6 +47,9 @@ public sealed class IndexHost : IIndexService
     public bool ServiceInstalled => ServiceInstaller.IsInstalled(_userSid);
     public bool ServiceAvailable => ServiceInstaller.FindServiceExe() != null;
 
+    /// <summary>True when FastFind has been rebuilt or updated since the service was installed, so installing again would update it.</summary>
+    public bool ServiceOutdated => !ServiceInstaller.IsInstalledCopyCurrent(_userSid);
+
     /// <summary>Chooses a source in the background: the service if it is (or can be) running, otherwise an in-process index.</summary>
     public void Start() => Task.Run(() => Connect(waitForService: TimeSpan.FromSeconds(6)));
 
@@ -136,8 +139,9 @@ public sealed class IndexHost : IIndexService
     private void OnIndexChanged() => IndexChanged?.Invoke();
 
     /// <summary>
-    /// Installs the index service (one UAC prompt) and switches to it. Returns an error message, or null on success.
-    /// Runs the installer elevated and waits for it, so call from a background thread.
+    /// Installs the index service (one UAC prompt) and switches to it; over an installed service, this updates it.
+    /// Returns an error message, or null on success. Runs the installer elevated and waits for it, so call from a
+    /// background thread.
     /// </summary>
     public string? InstallService()
     {

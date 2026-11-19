@@ -537,4 +537,50 @@ public class ServiceInstallerTests
     [Fact]
     public void TaskNameIsPerUser()
         => Assert.NotEqual(ServiceInstaller.TaskName("S-1-5-21-1-2-3-1001"), ServiceInstaller.TaskName("S-1-5-21-1-2-3-1002"));
+
+    [Fact]
+    public void ServiceIsInstalledUnderProgramFilesOnePerUser()
+    {
+        string folder = ServiceInstaller.InstallDirectory("S-1-5-21-1-2-3-1001");
+        Assert.StartsWith(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles), folder);
+        Assert.NotEqual(folder, ServiceInstaller.InstallDirectory("S-1-5-21-1-2-3-1002"));
+    }
+
+    [Fact]
+    public void CopyTakesOnlyTheServiceAndKeepsItCurrent()
+    {
+        string root = Path.Combine(Path.GetTempPath(), "ff-install-" + Guid.NewGuid().ToString("N"));
+        string source = Path.Combine(root, "app"), target = Path.Combine(root, "installed");
+        try
+        {
+            Directory.CreateDirectory(source);
+            foreach (string name in new[] { "FastFind.Service.exe", "FastFind.Service.dll", "FastFind.Service.runtimeconfig.json", "FastFind.Core.dll", "FastFind.exe", "FastFind.dll" })
+                File.WriteAllText(Path.Combine(source, name), name);
+
+            Assert.False(ServiceInstaller.IsCopyCurrent(source, target));
+            ServiceInstaller.CopyPayload(source, target);
+
+            Assert.Equal(new[] { "FastFind.Core.dll", "FastFind.Service.dll", "FastFind.Service.exe", "FastFind.Service.runtimeconfig.json" },
+                Directory.GetFiles(target).Select(Path.GetFileName).Order(StringComparer.OrdinalIgnoreCase));
+            Assert.True(ServiceInstaller.IsCopyCurrent(source, target));
+
+            // A rebuild of FastFind leaves the installed copy behind until it is installed again.
+            File.WriteAllText(Path.Combine(source, "FastFind.Core.dll"), "rebuilt");
+            Assert.False(ServiceInstaller.IsCopyCurrent(source, target));
+            ServiceInstaller.CopyPayload(source, target);
+            Assert.True(ServiceInstaller.IsCopyCurrent(source, target));
+            Assert.Equal("rebuilt", File.ReadAllText(Path.Combine(target, "FastFind.Core.dll")));
+        }
+        finally
+        {
+            try { Directory.Delete(root, recursive: true); } catch (IOException) { }
+        }
+    }
+
+    [Fact]
+    public void AServiceRunningFromItsOwnFolderIsAlwaysCurrent()
+    {
+        string folder = Path.Combine(Path.GetTempPath(), "ff-install-" + Guid.NewGuid().ToString("N"));
+        Assert.True(ServiceInstaller.IsCopyCurrent(folder, folder + @"\"));
+    }
 }

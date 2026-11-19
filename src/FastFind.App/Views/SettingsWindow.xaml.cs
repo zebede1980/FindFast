@@ -41,16 +41,22 @@ public partial class SettingsWindow : Window
 
     private void OnSourceChanged() => Dispatcher.BeginInvoke(UpdateServiceState);
 
+    /// <summary>The service button updates the running service rather than removing it.</summary>
+    private bool _offerUpdate;
+
     /// <summary>Explains where the index lives right now and offers the matching action.</summary>
     private void UpdateServiceState()
     {
         var index = App.Index;
+        _offerUpdate = false;
         if (index.IsRemote)
         {
             ElevationText.Text = index.IsElevated
                 ? "The index service is running. NTFS volumes are read straight from the Master File Table and kept live from the change journal, while this window runs without administrator rights."
                 : "The index service is running, but without administrator rights, so it scans folder by folder.";
-            ServiceButton.Content = "Remove index service";
+            _offerUpdate = index.ServiceAvailable && index.ServiceOutdated;
+            if (_offerUpdate) ElevationText.Text += " FastFind has been updated since the service was installed; update it to match.";
+            ServiceButton.Content = _offerUpdate ? "Update index service" : "Remove index service";
             ServiceButton.Visibility = Visibility.Visible;
         }
         else if (index.IsElevated)
@@ -73,7 +79,7 @@ public partial class SettingsWindow : Window
     private void OnServiceClick(object sender, RoutedEventArgs e)
     {
         ServiceButton.IsEnabled = false;
-        if (App.Index.IsRemote)
+        if (App.Index.IsRemote && !_offerUpdate)
         {
             Task.Run(App.Index.UninstallService).ContinueWith(t =>
             {
