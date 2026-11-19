@@ -48,7 +48,8 @@ public static class FrostTheme
         Color source = SystemColors.AccentColor;
         double light = dark ? 0.55 : 0.68;
         // The light sits on top of the window tint, so the thinner that tint, the louder the light; keep the two in step.
-        double strength = dark ? 0.4 : 0.5;
+        // In dark the window is deliberately dark and the light a quiet glow at its corners, not a wash of colour.
+        double strength = dark ? 0.5 : 0.5;
         Color violet = Turn(source, 72, 0.85, light);
         resources["FrostGlowABrush"] = Glow(Turn(source, 0, 0.95, light), 0x8C * strength, 0.08, 0.02, 0.55, 0.80);
         resources["FrostGlowBBrush"] = Glow(violet, 0x80 * strength, 0.97, 0.00, 0.50, 0.85);
@@ -64,11 +65,11 @@ public static class FrostTheme
         {
             // Windows' own dark glass is a mid grey, which leaves white text looking washed out; a deep blue-black laid
             // over it gives the contrast back and still lets the colours of the desktop come through.
-            Set("FrostWindowTintBrush", Color.FromRgb(0x0A, 0x0C, 0x1C), 0x40);
-            Set("FrostWindowTintInactiveBrush", Color.FromRgb(0x0C, 0x0E, 0x1A), 0xDB);
+            Set("FrostWindowTintBrush", Color.FromRgb(0x08, 0x0A, 0x16), 0xC2);
+            Set("FrostWindowTintInactiveBrush", Color.FromRgb(0x0A, 0x0C, 0x16), 0xE6);
             // Panes are smoked glass: darker than the window around them, so the lists and buttons inside read clearly
             // while the coloured light stays bright in the gaps and the sidebar. A bright upper edge catches the light.
-            resources["FrostPaneBrush"] = Fade(Color.FromRgb(0x08, 0x0A, 0x18), 0x26, Color.FromRgb(0x08, 0x0A, 0x18), 0x3D, new Point(0, 0), new Point(0, 1));
+            resources["FrostPaneBrush"] = Fade(Color.FromRgb(0x08, 0x0A, 0x18), 0x70, Color.FromRgb(0x08, 0x0A, 0x18), 0x8F, new Point(0, 0), new Point(0, 1));
             // Buttons and chips are the opposite: lighter than what they sit on, so they stand out from the pane.
             resources["FrostCardBrush"] = Fade(Colors.White, 0x2E, Colors.White, 0x1A, new Point(0, 0), new Point(0, 1));
             resources["FrostCardStrokeBrush"] = Fade(Colors.White, 0x66, Colors.White, 0x1F, new Point(0, 0), new Point(0, 1), middle: 0.35);
