@@ -56,6 +56,17 @@ public sealed class GlassChrome
     private readonly double _captionHeight;
 
     /// <summary>
+    /// A soft shade behind minimise, maximise and close. Windows draws them in thin light glyphs, which vanish over a
+    /// bright wallpaper or a pool of coloured light showing through the glass; the shade keeps them readable.
+    /// </summary>
+    private readonly Border _buttonShade = new()
+    {
+        HorizontalAlignment = HorizontalAlignment.Right,
+        VerticalAlignment = VerticalAlignment.Top,
+        IsHitTestVisible = false,
+    };
+
+    /// <summary>
     /// Glass needs Windows 11 22H2 or later, and is not used with a high-contrast theme (Windows draws no glass then,
     /// and the user has asked for plain colours). Without it a window keeps the ordinary Windows title bar.
     /// </summary>
@@ -83,6 +94,11 @@ public sealed class GlassChrome
         _captionSpacer = captionSpacer;
         _captionHeight = captionHeight;
         Attached.Add(this);
+
+        _buttonShade.SetResourceReference(Border.BackgroundProperty, "FrostCaptionShadeBrush");
+        Grid.SetRowSpan(_buttonShade, int.MaxValue);
+        Grid.SetColumnSpan(_buttonShade, int.MaxValue);
+        root.Children.Add(_buttonShade);
 
         Apply();
         window.SourceInitialized += (_, _) => Apply();
@@ -157,6 +173,7 @@ public sealed class GlassChrome
         {
             _root.Margin = default;
             if (_captionSpacer != null) _captionSpacer.Width = 0;
+            _buttonShade.Visibility = Visibility.Collapsed;
             Changed?.Invoke();
             return;
         }
@@ -178,10 +195,17 @@ public sealed class GlassChrome
         if (WindowChrome.GetWindowChrome(_window) is { } chrome) chrome.CaptionHeight = _captionHeight + top / scale;
 
         // Where Windows has put minimise, maximise and close, measured from the window's left edge.
-        double room = 150;
+        double room = 150, buttonHeight = 32;
         if (DwmGetWindowAttribute(hwnd, DWMWA_CAPTION_BUTTON_BOUNDS, out RECT buttons, Marshal.SizeOf<RECT>()) == 0 && buttons.Right > buttons.Left)
+        {
             room = (client.Right - right - buttons.Left) / scale;
+            buttonHeight = (buttons.Bottom - top) / scale;
+        }
         if (_captionSpacer != null) _captionSpacer.Width = Math.Max(0, room + 4);
+        // A little wider than the buttons, because the shade fades in from its left edge.
+        _buttonShade.Width = Math.Max(0, room * 1.3);
+        _buttonShade.Height = Math.Max(0, buttonHeight);
+        _buttonShade.Visibility = Visibility.Visible;
         Changed?.Invoke();
     }
 }

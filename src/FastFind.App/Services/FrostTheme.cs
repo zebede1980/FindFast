@@ -55,6 +55,9 @@ public static class FrostTheme
         resources["FrostGlowCBrush"] = Glow(Turn(source, -38, 0.90, light - 0.07), 0x73 * strength, 0.78, 1.05, 0.50, 0.72);
         resources["FrostGlowDBrush"] = Glow(Turn(source, 168, 0.95, light), 0x66 * strength, 0.26, 1.12, 0.36, 0.58);
         resources["FrostAccentColor"] = accent;
+        // Behind Windows' own minimise, maximise and close: darkens (or, in light mode, lightens) whatever shows through
+        // there, fading in from the left so it reads as shadow rather than a box.
+        resources["FrostCaptionShadeBrush"] = Shade(dark ? Colors.Black : Colors.White, dark ? 0x80 : 0x99);
         resources["FrostBrandBrush"] = Fade(accent, 0xFF, Turn(source, 72, 0.9, dark ? 0.7 : 0.5), 0xFF, new Point(0, 0), new Point(1, 1));
 
         if (dark)
@@ -137,6 +140,7 @@ public static class FrostTheme
         Set("RowSelectedBrush", highlight, 0x66);
         Set("FrostActiveStrokeBrush", highlight, 0xFF);
         Set("FrostBrandBrush", highlight, 0xFF);
+        Set("FrostCaptionShadeBrush", highlight, 0x00);
         resources["FrostAccentColor"] = highlight;
         foreach (string glow in new[] { "FrostGlowABrush", "FrostGlowBBrush", "FrostGlowCBrush", "FrostGlowDBrush" }) Set(glow, highlight, 0x00);
     }
@@ -158,6 +162,17 @@ public static class FrostTheme
         brush.GradientStops.Add(new GradientStop(WithAlpha(from, fromAlpha), 0));
         if (middle > 0) brush.GradientStops.Add(new GradientStop(WithAlpha(to, toAlpha + (fromAlpha - toAlpha) * 0.15), middle));
         brush.GradientStops.Add(new GradientStop(WithAlpha(to, toAlpha), 1));
+        brush.Freeze();
+        return brush;
+    }
+
+    /// <summary>Clear at the left, reaching full strength a quarter of the way across and staying there.</summary>
+    private static LinearGradientBrush Shade(Color colour, double alpha)
+    {
+        var brush = new LinearGradientBrush { StartPoint = new Point(0, 0), EndPoint = new Point(1, 0) };
+        brush.GradientStops.Add(new GradientStop(WithAlpha(colour, 0), 0));
+        brush.GradientStops.Add(new GradientStop(WithAlpha(colour, alpha), 0.25));
+        brush.GradientStops.Add(new GradientStop(WithAlpha(colour, alpha), 1));
         brush.Freeze();
         return brush;
     }
