@@ -17,8 +17,8 @@ A tab is a **location plus a query**:
 * **Two panes side by side** (Ctrl+\ for one or two), each with its own **tabs**, address bar, history and filter box.
   Tab moves between panes; drag the gap between them to resize, double-click it to equalise. **Open in other pane**
   (right-click, or Shift+Enter) shows a folder on the opposite side, bringing up the second pane if only one is showing.
-  **Lock a tab** (padlock button or Ctrl+Shift+L) and every folder you open from it opens in the other pane instead,
-  so you can work through a folder's contents one by one without losing your place.
+  **Lock a tab** (padlock button or Ctrl+Shift+L) and a single click on a folder (or Enter) shows it in the other pane
+  instead, so you can work through a folder's contents one by one without losing your place.
 * **A glass window**: the desktop shows through, blurred, behind panes of tinted glass, in dark or light to match
   Windows (or whichever you pick in Settings). Pools of coloured light glow behind the panes, in your Windows accent
   colour and three companions worked out from it. With two panes showing, the edge of the one you are working in

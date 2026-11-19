@@ -20,6 +20,7 @@ public partial class FilePaneView : UserControl
     private Point _dragStart;
     private bool _dragArmed;
     private DataGridRow? _deferredSelectRow;
+    private FileRow? _clickOpensFolder;
     private bool _focusGridOnResults;
     private ScrollViewer? _gridScroller;
 
@@ -657,7 +658,10 @@ public partial class FilePaneView : UserControl
         else if (e.ChangedButton == MouseButton.XButton2) { Vm?.GoForward(); e.Handled = true; }
     }
 
-    /// <summary>Double-click opens the item; double-click on the path column goes to that folder. A locked tab sends folders to the other pane.</summary>
+    /// <summary>
+    /// Double-click opens the item; double-click on the path column goes to that folder. A locked tab sends folders to the
+    /// other pane, and has already done so on the first click (see <see cref="OnGridPreviewMouseLeftButtonUp"/>).
+    /// </summary>
     private void OnRowDoubleClick(object sender, MouseButtonEventArgs e)
     {
         if (e.ChangedButton != MouseButton.Left || e.OriginalSource is not DependencyObject d) return;
@@ -679,6 +683,7 @@ public partial class FilePaneView : UserControl
     {
         _dragArmed = false;
         _deferredSelectRow = null;
+        _clickOpensFolder = null;
         if (e.OriginalSource is not DependencyObject d) return;
         if (MainWindow.FindVisualParent<DataGridColumnHeader>(d) != null || MainWindow.FindVisualParent<ScrollBar>(d) != null) return;
         var row = MainWindow.FindVisualParent<DataGridRow>(d);
@@ -691,6 +696,12 @@ public partial class FilePaneView : UserControl
         }
         _dragStart = e.GetPosition(this);
         _dragArmed = true;
+        // In a locked tab a plain click on a folder shows it in the other pane, so you can step through folders with one
+        // click each. It waits for the button to come up, because the same press might be the start of a drag. Clicks
+        // with Ctrl or Shift are left alone: they build a selection.
+        if (e.ClickCount == 1 && Keyboard.Modifiers == ModifierKeys.None && Vm is { IsLocked: true }
+            && row.DataContext is FileRow { IsDirectory: true, IsDeleted: false } folder)
+            _clickOpensFolder = folder;
         // Clicking an already-selected row inside a multi-selection must not collapse the selection before a drag starts.
         if (row.IsSelected && Grid.SelectedItems.Count > 1 && Keyboard.Modifiers == ModifierKeys.None && e.ClickCount == 1)
         {
@@ -708,6 +719,9 @@ public partial class FilePaneView : UserControl
             Grid.CurrentItem = _deferredSelectRow.DataContext;
             _deferredSelectRow = null;
         }
+        // Still armed means the press never turned into a drag, so it was a click.
+        if (_dragArmed && _clickOpensFolder is { } folder && Vm is { IsLocked: true }) GoTo(folder.FullPath);
+        _clickOpensFolder = null;
         _dragArmed = false;
     }
 

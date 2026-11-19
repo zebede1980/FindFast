@@ -90,7 +90,7 @@
             </Grid.ColumnDefinitions>
             <StackPanel Grid.Column="1" Orientation="Horizontal">
                 <ToggleButton x:Name="LockToggle" Style="{StaticResource PillToggle}" Padding="0" IsChecked="{Binding IsLocked}" AutomationProperties.Name="Lock tab"
-                              ToolTip="Lock this tab: folders you open from it open in the other pane, so you keep your place here (Ctrl+Shift+L)">
+                              ToolTip="Lock this tab: clicking a folder shows it in the other pane, so you keep your place here (Ctrl+Shift+L)">
                     <TextBlock FontFamily="{StaticResource IconFont}" Text="&#xE72E;" FontSize="13" />
                 </ToggleButton>
                 <ToggleButton x:Name="SubfoldersToggle" Style="{StaticResource PillToggle}" IsChecked="{Binding Recursive}" AutomationProperties.Name="Include subfolders"
