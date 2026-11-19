@@ -6,14 +6,77 @@
         FontFamily="{StaticResource UiFont}" UseLayoutRounding="True" SnapsToDevicePixels="True"
         TextOptions.TextFormattingMode="Display" TextOptions.TextRenderingMode="ClearType"
         AllowDrop="True">
-    <Grid>
+    <!-- The whole window is glass: the desktop shows through, blurred, and this tint sits over it so text stays readable
+         whatever is behind. Every pixel is painted on purpose: where nothing was drawn, hiding a pane left stale pixels behind. -->
+    <Grid x:Name="RootGrid" Background="{DynamicResource FrostWindowTintBrush}">
         <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
             <RowDefinition Height="*" />
             <RowDefinition Height="Auto" />
         </Grid.RowDefinitions>
 
-        <!-- Opaque on purpose: over the transparent window backdrop, areas a hidden pane used to cover were left showing stale pixels -->
-        <Grid x:Name="Body" Background="{DynamicResource SolidBackgroundFillColorBaseBrush}">
+        <!-- Coloured light behind the glass: four soft pools, in the accent colour and its companions (see FrostTheme).
+             They sit under everything else, so the panes and the sidebar pick the colour up through their own tint. -->
+        <Grid x:Name="Aurora" Grid.RowSpan="3" IsHitTestVisible="False">
+            <Rectangle Fill="{DynamicResource FrostGlowABrush}" />
+            <Rectangle Fill="{DynamicResource FrostGlowBBrush}" />
+            <Rectangle Fill="{DynamicResource FrostGlowCBrush}" />
+            <Rectangle Fill="{DynamicResource FrostGlowDBrush}" />
+        </Grid>
+
+        <!-- Title bar: drawn by us so it can hold the jump box and the window's own buttons. Windows still draws minimise,
+             maximise and close at the right; CaptionSpacer keeps that corner clear. -->
+        <Grid x:Name="TitleBar" Height="32" Margin="0,0,0,2">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition x:Name="TitleLeftColumn" Width="Auto" />
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="Auto" />
+            </Grid.ColumnDefinitions>
+            <StackPanel x:Name="TitleBrand" Orientation="Horizontal" VerticalAlignment="Center" Margin="14,0,0,0" IsHitTestVisible="False">
+                <Border Width="18" Height="18" CornerRadius="5" Background="{DynamicResource FrostBrandBrush}">
+                    <TextBlock FontFamily="{StaticResource IconFont}" Text="&#xE721;" FontSize="10" HorizontalAlignment="Center" VerticalAlignment="Center"
+                               Foreground="{DynamicResource TextOnAccentFillColorPrimaryBrush}" />
+                </Border>
+                <TextBlock Text="FastFind" FontSize="12" FontWeight="SemiBold" VerticalAlignment="Center" Margin="9,0,0,1"
+                           Foreground="{DynamicResource FrostTextSecondaryBrush}" />
+            </StackPanel>
+
+            <Button x:Name="JumpButton" Grid.Column="1" Style="{StaticResource JumpPill}" MaxWidth="440" Margin="16,0" VerticalAlignment="Center"
+                    WindowChrome.IsHitTestVisibleInChrome="True" Command="{Binding JumpCommand}"
+                    ToolTip="Jump to any folder (Ctrl+P)" AutomationProperties.Name="Jump to folder">
+                <DockPanel>
+                    <TextBlock DockPanel.Dock="Left" FontFamily="{StaticResource IconFont}" Text="&#xE721;" FontSize="12" VerticalAlignment="Center" Margin="0,1,9,0"
+                               Foreground="{DynamicResource AccentTextFillColorPrimaryBrush}" />
+                    <Border DockPanel.Dock="Right" CornerRadius="4" BorderThickness="1" Padding="5,0,5,1" VerticalAlignment="Center" Margin="8,0,0,0"
+                            BorderBrush="{DynamicResource FrostFieldStrokeBrush}">
+                        <TextBlock Text="Ctrl+P" FontSize="10.5" />
+                    </Border>
+                    <TextBlock Text="Jump to any folder" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
+                </DockPanel>
+            </Button>
+
+            <!-- Commands for the whole window, then the room Windows needs for its own three buttons -->
+            <StackPanel x:Name="TitleRight" Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center">
+                <ToggleButton x:Name="SidebarButton" Style="{StaticResource IconToggle}" Content="&#xE90C;" IsChecked="{Binding SidebarVisible}"
+                              WindowChrome.IsHitTestVisibleInChrome="True" ToolTip="Show or hide the sidebar (Ctrl+B)" AutomationProperties.Name="Toggle sidebar" />
+                <ToggleButton x:Name="DualPaneButton" Style="{StaticResource IconToggle}" IsChecked="{Binding IsDualPane}"
+                              WindowChrome.IsHitTestVisibleInChrome="True" ToolTip="One pane or two side by side (Ctrl+\)" AutomationProperties.Name="Toggle second pane">
+                    <Grid Width="16" Height="13">
+                        <Border BorderThickness="1.2" CornerRadius="2.5" BorderBrush="{Binding Foreground, RelativeSource={RelativeSource AncestorType=ToggleButton}}" />
+                        <Rectangle Width="1.2" HorizontalAlignment="Center" Fill="{Binding Foreground, RelativeSource={RelativeSource AncestorType=ToggleButton}}" />
+                    </Grid>
+                </ToggleButton>
+                <ToggleButton x:Name="PreviewButton" Style="{StaticResource IconToggle}" Content="&#xE90D;" IsChecked="{Binding PreviewVisible}"
+                              WindowChrome.IsHitTestVisibleInChrome="True" ToolTip="Show or hide the preview pane (Alt+P)" AutomationProperties.Name="Toggle preview pane" />
+                <Button x:Name="SettingsButton" Style="{StaticResource IconButton}" Height="26" Margin="1,0" Focusable="False" Content="&#xE713;" Command="{Binding ShowSettingsCommand}"
+                        WindowChrome.IsHitTestVisibleInChrome="True" ToolTip="Settings and index status" AutomationProperties.Name="Settings" />
+                <Button x:Name="HelpButton" Style="{StaticResource IconButton}" Height="26" Margin="1,0" Focusable="False" Content="&#xE897;" Command="{Binding ShowHelpCommand}"
+                        WindowChrome.IsHitTestVisibleInChrome="True" ToolTip="Shortcuts and search syntax (F1)" AutomationProperties.Name="Help" />
+                <Border x:Name="CaptionSpacer" Width="150" />
+            </StackPanel>
+        </Grid>
+
+        <Grid x:Name="Body" Grid.Row="1" Margin="4,4,4,0">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition x:Name="SidebarColumn" Width="220" MinWidth="0" />
                 <ColumnDefinition Width="Auto" />
@@ -24,20 +87,19 @@
                 <ColumnDefinition x:Name="PreviewColumn" Width="0" MinWidth="0" />
             </Grid.ColumnDefinitions>
 
-            <!-- Sidebar: places, pinned folders, drives -->
-            <Border x:Name="SidebarHost" Grid.Column="0" Background="{DynamicResource LayerFillColorDefaultBrush}"
-                    BorderBrush="{DynamicResource DividerStrokeColorDefaultBrush}" BorderThickness="0,0,1,0">
-                <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" Focusable="False" Padding="8,10,8,8">
+            <!-- Sidebar: places, pinned folders, drives. It sits straight on the glass, with no panel of its own. -->
+            <Border x:Name="SidebarHost" Grid.Column="0" Background="Transparent">
+                <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" Focusable="False" Padding="6,4,4,4">
                     <ItemsControl ItemsSource="{Binding Sidebar}" Focusable="False">
                         <ItemsControl.ItemTemplate>
                             <DataTemplate>
-                                <StackPanel Margin="0,0,0,10">
-                                    <TextBlock Text="{Binding Title}" FontSize="11" FontWeight="SemiBold" Margin="10,4,0,4"
-                                               Foreground="{DynamicResource TextFillColorTertiaryBrush}" />
+                                <StackPanel Margin="0,0,0,12">
+                                    <TextBlock Text="{Binding Title}" FontSize="11" FontWeight="SemiBold" Margin="10,2,0,4"
+                                               Foreground="{DynamicResource FrostTextSecondaryBrush}" />
                                     <ItemsControl ItemsSource="{Binding Items}" Focusable="False">
                                         <ItemsControl.ItemTemplate>
                                             <DataTemplate>
-                                                <Button Style="{StaticResource SidebarButton}" Click="OnSidebarClick" PreviewMouseDown="OnSidebarMouseDown"
+                                                <Button x:Name="Place" Style="{StaticResource SidebarButton}" Click="OnSidebarClick" PreviewMouseDown="OnSidebarMouseDown"
                                                         PreviewMouseRightButtonUp="OnSidebarRightClick" ToolTip="{Binding ToolTip}" AutomationProperties.Name="{Binding Title}"
                                                         AllowDrop="True" DragOver="OnSidebarDragOver" Drop="OnSidebarDrop">
                                                     <Grid>
@@ -45,20 +107,29 @@
                                                             <ColumnDefinition Width="Auto" />
                                                             <ColumnDefinition Width="*" />
                                                         </Grid.ColumnDefinitions>
-                                                        <TextBlock FontFamily="{StaticResource IconFont}" Text="{Binding Glyph}" FontSize="15" VerticalAlignment="Center" Margin="0,0,11,0"
-                                                                   Foreground="{DynamicResource TextFillColorSecondaryBrush}" />
+                                                        <TextBlock x:Name="Glyph" FontFamily="{StaticResource IconFont}" Text="{Binding Glyph}" FontSize="15" VerticalAlignment="Center" Margin="0,0,11,0"
+                                                                   Foreground="{DynamicResource FrostTextSecondaryBrush}" />
                                                         <StackPanel Grid.Column="1" VerticalAlignment="Center">
                                                             <TextBlock Text="{Binding Title}" FontSize="13" TextTrimming="CharacterEllipsis" />
-                                                            <Grid Height="4" Margin="0,4,0,1" Visibility="{Binding HasBar, Converter={StaticResource BoolToVisibility}}">
-                                                                <Border CornerRadius="2" Background="{DynamicResource ControlStrongFillColorDisabledBrush}" Opacity="0.5" />
+                                                            <Grid Height="4" Margin="0,5,0,2" Visibility="{Binding HasBar, Converter={StaticResource BoolToVisibility}}">
+                                                                <Border CornerRadius="2" Background="{DynamicResource FrostDividerBrush}" />
                                                                 <ProgressBar Minimum="0" Maximum="1" Value="{Binding UsedFraction, Mode=OneWay}" Height="4" BorderThickness="0" Background="Transparent" />
                                                             </Grid>
                                                             <TextBlock Text="{Binding Detail}" FontSize="10.5" TextTrimming="CharacterEllipsis"
-                                                                       Foreground="{DynamicResource TextFillColorTertiaryBrush}"
+                                                                       Foreground="{DynamicResource FrostTextSecondaryBrush}"
                                                                        Visibility="{Binding HasBar, Converter={StaticResource BoolToVisibility}}" />
                                                         </StackPanel>
                                                     </Grid>
                                                 </Button>
+                                                <DataTemplate.Triggers>
+                                                    <!-- Search everywhere is the one entry that is not a place: it gets a glass chip so it stands out -->
+                                                    <DataTrigger Binding="{Binding Kind}" Value="Search">
+                                                        <Setter TargetName="Place" Property="Background" Value="{DynamicResource FrostCardBrush}" />
+                                                        <Setter TargetName="Place" Property="BorderBrush" Value="{DynamicResource FrostCardStrokeBrush}" />
+                                                        <Setter TargetName="Place" Property="Margin" Value="0,1,0,5" />
+                                                        <Setter TargetName="Glyph" Property="Foreground" Value="{DynamicResource AccentTextFillColorPrimaryBrush}" />
+                                                    </DataTrigger>
+                                                </DataTemplate.Triggers>
                                             </DataTemplate>
                                         </ItemsControl.ItemTemplate>
                                     </ItemsControl>
@@ -68,44 +139,48 @@
                     </ItemsControl>
                 </ScrollViewer>
             </Border>
-            <GridSplitter x:Name="SidebarSplitter" Grid.Column="1" Width="5" Margin="-2,0" HorizontalAlignment="Center" VerticalAlignment="Stretch" Background="Transparent"
+            <GridSplitter x:Name="SidebarSplitter" Grid.Column="1" Width="6" Margin="-3,0" HorizontalAlignment="Center" VerticalAlignment="Stretch" Background="Transparent"
                           ResizeBehavior="PreviousAndNext" DragCompleted="OnSplitterDragCompleted" />
 
             <views:PaneView x:Name="LeftPane" Grid.Column="2" DataContext="{Binding Left}" />
 
-            <GridSplitter x:Name="PaneSplitter" Grid.Column="3" Width="7" HorizontalAlignment="Center" VerticalAlignment="Stretch" ResizeBehavior="PreviousAndNext"
+            <!-- The gap between the two panes is the handle: there is no line to draw on glass -->
+            <GridSplitter x:Name="PaneSplitter" Grid.Column="3" Width="8" Margin="-4,0" HorizontalAlignment="Center" VerticalAlignment="Stretch" ResizeBehavior="PreviousAndNext"
                           Background="Transparent" MouseDoubleClick="OnPaneSplitterDoubleClick" ToolTip="Drag to resize the panes; double-click to make them equal">
                 <GridSplitter.Template>
                     <ControlTemplate TargetType="GridSplitter">
-                        <Border Background="Transparent">
-                            <Rectangle Width="1" HorizontalAlignment="Center" Fill="{DynamicResource DividerStrokeColorDefaultBrush}" />
-                        </Border>
+                        <Border Background="Transparent" />
                     </ControlTemplate>
                 </GridSplitter.Template>
             </GridSplitter>
 
             <views:PaneView x:Name="RightPane" Grid.Column="4" DataContext="{Binding Right}" />
 
-            <GridSplitter x:Name="PreviewSplitter" Grid.Column="5" Width="5" Margin="-2,0" HorizontalAlignment="Center" VerticalAlignment="Stretch" Background="Transparent"
+            <GridSplitter x:Name="PreviewSplitter" Grid.Column="5" Width="8" Margin="-4,0" HorizontalAlignment="Center" VerticalAlignment="Stretch" Background="Transparent"
                           ResizeBehavior="PreviousAndNext" DragCompleted="OnSplitterDragCompleted" />
             <views:PreviewPane x:Name="Preview" Grid.Column="6" />
         </Grid>
 
         <!-- Status bar: the state of the index -->
-        <Border Grid.Row="1" Padding="16,5" BorderThickness="0,1,0,0" BorderBrush="{DynamicResource DividerStrokeColorDefaultBrush}"
-                Background="{DynamicResource LayerFillColorDefaultBrush}">
+        <Border Grid.Row="2" Padding="18,3,18,7">
             <DockPanel>
                 <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Center">
                     <ProgressBar Width="90" Height="4" Margin="0,0,10,0" IsIndeterminate="True"
                                  Visibility="{Binding IsIndexing, Converter={StaticResource BoolToVisibility}}" />
+                    <Ellipse Width="7" Height="7" Margin="0,1,8,0" VerticalAlignment="Center" Fill="{DynamicResource AccentFillColorDefaultBrush}"
+                             Visibility="{Binding IsIndexing, Converter={StaticResource InverseBoolToVisibility}}">
+                        <Ellipse.Effect>
+                            <DropShadowEffect BlurRadius="9" ShadowDepth="0" Opacity="0.9" Color="{DynamicResource FrostAccentColor}" />
+                        </Ellipse.Effect>
+                    </Ellipse>
                     <TextBlock Text="{Binding IndexStatus}" FontSize="12" Foreground="{DynamicResource TextFillColorPrimaryBrush}" />
-                    <TextBlock Text="{Binding IndexDetail}" FontSize="12" Margin="8,0,0,0" Foreground="{DynamicResource TextFillColorSecondaryBrush}" />
+                    <TextBlock Text="{Binding IndexDetail}" FontSize="12" Margin="8,0,0,0" Foreground="{DynamicResource FrostTextSecondaryBrush}" />
                     <TextBlock Margin="12,0,0,0" FontSize="12" Visibility="{Binding ServiceHintVisible, Converter={StaticResource BoolToVisibility}}">
                         <Hyperlink Click="OnEnableServiceClick" ToolTip="Installs a small background service (one administrator prompt) that reads the NTFS file table directly. Indexing drops from minutes to seconds, changes are picked up from the change journal, and this window keeps running without administrator rights.">Enable instant NTFS indexing</Hyperlink>
                     </TextBlock>
                 </StackPanel>
                 <TextBlock x:Name="HintText" FontSize="12" VerticalAlignment="Center" TextTrimming="CharacterEllipsis"
-                           Foreground="{DynamicResource TextFillColorTertiaryBrush}"
+                           Foreground="{DynamicResource FrostTextSecondaryBrush}"
                            Text="F1 shortcuts  ·  Ctrl+P jump to folder  ·  Ctrl+Shift+F search everywhere  ·  F5 / F6 copy / move to the other pane" />
             </DockPanel>
         </Border>

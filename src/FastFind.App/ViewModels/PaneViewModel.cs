@@ -11,7 +11,6 @@ public sealed class PaneViewModel : ObservableObject
     private readonly Stack<TabState> _closed = new();
     private FileTabViewModel? _selectedTab;
     private bool _isActive;
-    private bool _showWindowCommands;
 
     public MainViewModel Main { get; }
     public string Name { get; }
@@ -47,9 +46,6 @@ public sealed class PaneViewModel : ObservableObject
 
     /// <summary>True for the pane that keyboard commands and the sidebar act on.</summary>
     public bool IsActive { get => _isActive; set => Set(ref _isActive, value); }
-
-    /// <summary>The window-level buttons (jump, split, settings) live in the tab strip of the right-most visible pane.</summary>
-    public bool ShowWindowCommands { get => _showWindowCommands; set => Set(ref _showWindowCommands, value); }
 
     public FileTabViewModel AddTab(string location = "", string query = "", bool recursive = false, bool select = true, string? selectName = null)
     {

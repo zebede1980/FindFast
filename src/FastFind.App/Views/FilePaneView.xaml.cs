@@ -56,6 +56,7 @@ public partial class FilePaneView : UserControl
         foreach (var column in Grid.Columns)
             DependencyPropertyDescriptor.FromProperty(DataGridColumn.WidthProperty, typeof(DataGridColumn)).AddValueChanged(column, (_, _) => ScheduleLayoutSave());
         DataContextChanged += OnDataContextChanged;
+        SizeChanged += OnPaneSizeChanged;
         // Pane shortcuts work wherever the focus is inside the pane (address bar, filter box or file list).
         PreviewKeyDown += (_, e) => { if (HandleKey(e)) e.Handled = true; };
     }
@@ -88,6 +89,12 @@ public partial class FilePaneView : UserControl
             }
         }
     }
+
+    /// <summary>The narrowest pane in which "Copy across" and "Move across" still have room for their words; below it they are icons only.</summary>
+    private const double WidthForAcrossLabels = 600;
+
+    private void OnPaneSizeChanged(object sender, SizeChangedEventArgs e)
+        => CopyAcrossLabel.Visibility = MoveAcrossLabel.Visibility = e.NewSize.Width >= WidthForAcrossLabels ? Visibility.Visible : Visibility.Collapsed;
 
     private ScrollViewer? Scroller => _gridScroller ??= MainWindow.FindVisualChild<ScrollViewer>(Grid);
 
@@ -380,6 +387,8 @@ public partial class FilePaneView : UserControl
     {
         UpdateEmptyState();
         UpdateSelectionText();
+        // A grid forgets which column it is sorted by whenever it is handed a new list; put the arrow back once it has it.
+        Dispatcher.BeginInvoke(DispatcherPriority.Loaded, UpdateSortGlyphs);
         string? pending = vm.PendingSelectName;
         bool focusGrid = _focusGridOnResults;
         _focusGridOnResults = false;

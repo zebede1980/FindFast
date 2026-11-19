@@ -225,20 +225,12 @@ public partial class App : Application
             "Light" => ThemeMode.Light,
             _ => ThemeMode.System,
         };
-        // Row tints are made here as frozen brushes: a brush that refers to a theme colour dynamically cannot be used in a style trigger.
-        try
-        {
-            var accent = SystemColors.AccentColor;
-            Current.Resources["RowSelectedBrush"] = Tint(accent, 0x55);
-        }
-        catch (Exception ex) { Logger.Warn($"Accent colour unavailable: {ex.Message}"); }
-    }
-
-    private static System.Windows.Media.SolidColorBrush Tint(System.Windows.Media.Color colour, byte alpha)
-    {
-        var brush = new System.Windows.Media.SolidColorBrush(System.Windows.Media.Color.FromArgb(alpha, colour.R, colour.G, colour.B));
-        brush.Freeze();
-        return brush;
+        // The glass tints (panes, boxes, the selected row) depend on the theme and on the Windows accent colour.
+        try { FrostTheme.Apply(Current.Resources, theme); }
+        catch (Exception ex) { Logger.Warn($"Theme colours unavailable: {ex.Message}"); }
+        // Changing the theme makes WPF put its own backdrop back on the window; ask for the glass one again afterwards.
+        if (Current.MainWindow is MainWindow window)
+            window.Dispatcher.BeginInvoke(DispatcherPriority.ApplicationIdle, window.ApplyChrome);
     }
 
     private void OnDispatcherUnhandledException(object sender, DispatcherUnhandledExceptionEventArgs e)

@@ -4,7 +4,33 @@
              xmlns:views="clr-namespace:FastFind.App.Views"
              xmlns:vm="clr-namespace:FastFind.App.ViewModels"
              Focusable="False" AllowDrop="True">
-    <Grid>
+    <!-- A pane is a sheet of glass. The margin is half the gap between it and its neighbours. -->
+    <Grid Margin="4,0,4,4">
+        <Border CornerRadius="12" BorderThickness="1" Background="{DynamicResource FrostPaneBrush}" BorderBrush="{DynamicResource FrostCardStrokeBrush}" />
+        <!-- Marks the pane that keyboard commands act on: its edge lights up in the accent colour and glows, like a lit
+             tube round the glass. With one pane there is nothing to tell apart, so it stays off. It is an outline with
+             nothing inside it, so the glow (an effect, which softens whatever it is applied to) never touches the text. -->
+        <Border x:Name="ActiveMarker" CornerRadius="12" BorderThickness="1.5" IsHitTestVisible="False"
+                BorderBrush="{DynamicResource FrostActiveStrokeBrush}">
+            <Border.Effect>
+                <DropShadowEffect BlurRadius="22" ShadowDepth="0" Opacity="0.9" Color="{DynamicResource FrostAccentColor}" />
+            </Border.Effect>
+            <Border.Style>
+                <Style TargetType="Border">
+                    <Setter Property="Visibility" Value="Collapsed" />
+                    <Style.Triggers>
+                        <MultiDataTrigger>
+                            <MultiDataTrigger.Conditions>
+                                <Condition Binding="{Binding IsActive}" Value="True" />
+                                <Condition Binding="{Binding Main.IsDualPane}" Value="True" />
+                            </MultiDataTrigger.Conditions>
+                            <Setter Property="Visibility" Value="Visible" />
+                        </MultiDataTrigger>
+                    </Style.Triggers>
+                </Style>
+            </Border.Style>
+        </Border>
+
         <TabControl x:Name="Tabs" Style="{StaticResource SearchTabControl}" ItemsSource="{Binding Tabs}" SelectedItem="{Binding SelectedTab}"
                     PreviewMouseDown="OnTabsPreviewMouseDown">
             <TabControl.ContentTemplate>
@@ -13,35 +39,11 @@
                 </DataTemplate>
             </TabControl.ContentTemplate>
         </TabControl>
-        <!-- Buttons at the right of the tab strip. The tab control's template leaves room for them (see SearchTabControl). -->
-        <StackPanel x:Name="StripButtons" Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Top" Margin="0,8,8,0"
+        <!-- The new-tab button follows the last tab. The tab control's template leaves room for it (see SearchTabControl). -->
+        <StackPanel x:Name="StripButtons" Orientation="Horizontal" HorizontalAlignment="Left" VerticalAlignment="Top" Margin="8,8,0,0"
                     SizeChanged="OnStripButtonsSizeChanged">
-            <Button x:Name="NewTabButton" Style="{StaticResource IconButton}" Content="&#xE710;" ToolTip="New tab (Ctrl+T)" AutomationProperties.Name="New tab"
+            <Button x:Name="NewTabButton" Style="{StaticResource IconButton}" Width="30" Height="30" Margin="0" FontSize="12" Content="&#xE710;" ToolTip="New tab (Ctrl+T)" AutomationProperties.Name="New tab"
                     Command="{Binding NewTabCommand}" />
-            <!-- Window-level commands sit in the tab strip of the right-most pane -->
-            <StackPanel Orientation="Horizontal" Visibility="{Binding ShowWindowCommands, Converter={StaticResource BoolToVisibility}}">
-                <Button x:Name="JumpButton" Style="{StaticResource IconButton}" Content="&#xE8DE;" ToolTip="Jump to any folder (Ctrl+P)" AutomationProperties.Name="Jump to folder"
-                        Command="{Binding Main.JumpCommand}" />
-                <Button x:Name="SidebarButton" Style="{StaticResource IconButton}" Content="&#xE90C;" ToolTip="Show or hide the sidebar (Ctrl+B)" AutomationProperties.Name="Toggle sidebar"
-                        Command="{Binding Main.ToggleSidebarCommand}" />
-                <Button x:Name="DualPaneButton" Style="{StaticResource IconButton}" ToolTip="One pane or two side by side (Ctrl+\)" AutomationProperties.Name="Toggle second pane"
-                        Command="{Binding Main.ToggleDualPaneCommand}">
-                    <Grid Width="16" Height="13">
-                        <Border BorderThickness="1.2" CornerRadius="2.5" BorderBrush="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}" />
-                        <Rectangle Width="1.2" HorizontalAlignment="Center" Fill="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}" />
-                    </Grid>
-                </Button>
-                <Button x:Name="PreviewButton" Style="{StaticResource IconButton}" Content="&#xE90D;" ToolTip="Show or hide the preview pane (Alt+P)" AutomationProperties.Name="Toggle preview pane"
-                        Command="{Binding Main.TogglePreviewCommand}" />
-                <Button x:Name="SettingsButton" Style="{StaticResource IconButton}" Content="&#xE713;" ToolTip="Settings and index status" AutomationProperties.Name="Settings"
-                        Command="{Binding Main.ShowSettingsCommand}" />
-                <Button x:Name="HelpButton" Style="{StaticResource IconButton}" Content="&#xE897;" ToolTip="Shortcuts and search syntax (F1)" AutomationProperties.Name="Help"
-                        Command="{Binding Main.ShowHelpCommand}" />
-            </StackPanel>
         </StackPanel>
-        <!-- Marks the pane that keyboard commands act on -->
-        <Border Height="2" VerticalAlignment="Top" CornerRadius="1" Margin="10,2,10,0" IsHitTestVisible="False"
-                Background="{DynamicResource AccentFillColorDefaultBrush}"
-                Visibility="{Binding IsActive, Converter={StaticResource BoolToVisibility}}" x:Name="ActiveMarker" />
     </Grid>
 </UserControl>

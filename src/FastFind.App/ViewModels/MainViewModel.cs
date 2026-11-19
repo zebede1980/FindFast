@@ -195,8 +195,6 @@ public sealed class MainViewModel : ObservableObject
     {
         Left.IsActive = ReferenceEquals(_activePane, Left);
         Right.IsActive = ReferenceEquals(_activePane, Right) && IsDualPane;
-        Left.ShowWindowCommands = !IsDualPane;
-        Right.ShowWindowCommands = IsDualPane;
         OnPropertyChanged(nameof(ActiveTab));
     }
 

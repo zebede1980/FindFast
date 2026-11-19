@@ -16,7 +16,34 @@
             <FontFamily x:Key="IconFont">Segoe Fluent Icons, Segoe MDL2 Assets</FontFamily>
             <FontFamily x:Key="UiFont">Segoe UI Variable Text, Segoe UI</FontFamily>
 
-            <!-- Round icon button used in the tab strip and search bar -->
+            <!-- The glass look: translucent tints over the blurred desktop that shows through the main window. These are the
+                 dark values, as a starting point; FrostTheme replaces them all at start-up and whenever the theme or the
+                 Windows accent colour changes. -->
+            <SolidColorBrush x:Key="FrostWindowTintBrush" Color="#A60A0C1C" />
+            <SolidColorBrush x:Key="FrostWindowTintInactiveBrush" Color="#DB0C0E1A" />
+            <!-- Pools of coloured light behind the panes, and the colour the active pane's edge glows in -->
+            <SolidColorBrush x:Key="FrostGlowABrush" Color="Transparent" />
+            <SolidColorBrush x:Key="FrostGlowBBrush" Color="Transparent" />
+            <SolidColorBrush x:Key="FrostGlowCBrush" Color="Transparent" />
+            <SolidColorBrush x:Key="FrostGlowDBrush" Color="Transparent" />
+            <SolidColorBrush x:Key="FrostBrandBrush" Color="#FF60CDFF" />
+            <Color x:Key="FrostAccentColor">#FF60CDFF</Color>
+            <SolidColorBrush x:Key="FrostPaneBrush" Color="#73080A18" />
+            <SolidColorBrush x:Key="FrostTextSecondaryBrush" Color="#E0FFFFFF" />
+            <SolidColorBrush x:Key="FrostTextTertiaryBrush" Color="#A6FFFFFF" />
+            <SolidColorBrush x:Key="FrostCardBrush" Color="#12FFFFFF" />
+            <SolidColorBrush x:Key="FrostCardStrokeBrush" Color="#1CFFFFFF" />
+            <SolidColorBrush x:Key="FrostFieldBrush" Color="#3D000000" />
+            <SolidColorBrush x:Key="FrostFieldStrokeBrush" Color="#1AFFFFFF" />
+            <SolidColorBrush x:Key="FrostHoverBrush" Color="#14FFFFFF" />
+            <SolidColorBrush x:Key="FrostPressedBrush" Color="#0CFFFFFF" />
+            <SolidColorBrush x:Key="FrostTabSelectedBrush" Color="#21FFFFFF" />
+            <SolidColorBrush x:Key="FrostDividerBrush" Color="#14FFFFFF" />
+            <SolidColorBrush x:Key="FrostActiveStrokeBrush" Color="#9960CDFF" />
+            <!-- Selected rows in the file lists: a tint of the accent colour, so text keeps its normal colour and stays readable. -->
+            <SolidColorBrush x:Key="RowSelectedBrush" Color="#4060CDFF" />
+
+            <!-- Icon button used in the title bar, the tab strip and the command bar -->
             <Style x:Key="IconButton" TargetType="Button">
                 <Setter Property="FontFamily" Value="{StaticResource IconFont}" />
                 <Setter Property="FontSize" Value="14" />
@@ -26,24 +53,24 @@
                 <Setter Property="Margin" Value="2,0" />
                 <Setter Property="Background" Value="Transparent" />
                 <Setter Property="BorderThickness" Value="0" />
-                <Setter Property="Foreground" Value="{DynamicResource TextFillColorSecondaryBrush}" />
+                <Setter Property="Foreground" Value="{DynamicResource FrostTextSecondaryBrush}" />
                 <Setter Property="Cursor" Value="Hand" />
                 <Setter Property="Template">
                     <Setter.Value>
                         <ControlTemplate TargetType="Button">
-                            <Border x:Name="Bd" CornerRadius="6" Background="{TemplateBinding Background}">
+                            <Border x:Name="Bd" CornerRadius="7" Background="{TemplateBinding Background}">
                                 <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
                             </Border>
                             <ControlTemplate.Triggers>
                                 <Trigger Property="IsMouseOver" Value="True">
-                                    <Setter TargetName="Bd" Property="Background" Value="{DynamicResource SubtleFillColorSecondaryBrush}" />
+                                    <Setter TargetName="Bd" Property="Background" Value="{DynamicResource FrostHoverBrush}" />
                                     <Setter Property="Foreground" Value="{DynamicResource TextFillColorPrimaryBrush}" />
                                 </Trigger>
                                 <Trigger Property="IsPressed" Value="True">
-                                    <Setter TargetName="Bd" Property="Background" Value="{DynamicResource SubtleFillColorTertiaryBrush}" />
+                                    <Setter TargetName="Bd" Property="Background" Value="{DynamicResource FrostPressedBrush}" />
                                 </Trigger>
                                 <Trigger Property="IsEnabled" Value="False">
-                                    <Setter Property="Opacity" Value="0.35" />
+                                    <Setter Property="Opacity" Value="0.45" />
                                     <Setter Property="Cursor" Value="Arrow" />
                                 </Trigger>
                             </ControlTemplate.Triggers>
@@ -52,28 +79,65 @@
                 </Setter>
             </Style>
 
-            <!-- Pill toggle used for Aa / .* / W / Path / filters -->
+            <!-- The same button for something that is on or off (sidebar, second pane, preview): it stays lit while on -->
+            <Style x:Key="IconToggle" TargetType="ToggleButton">
+                <Setter Property="FontFamily" Value="{StaticResource IconFont}" />
+                <Setter Property="FontSize" Value="14" />
+                <Setter Property="Width" Value="32" />
+                <Setter Property="Height" Value="26" />
+                <Setter Property="Padding" Value="0" />
+                <Setter Property="Margin" Value="1,0" />
+                <Setter Property="Background" Value="Transparent" />
+                <Setter Property="BorderThickness" Value="0" />
+                <Setter Property="Foreground" Value="{DynamicResource FrostTextSecondaryBrush}" />
+                <Setter Property="Cursor" Value="Hand" />
+                <Setter Property="Focusable" Value="False" />
+                <Setter Property="Template">
+                    <Setter.Value>
+                        <ControlTemplate TargetType="ToggleButton">
+                            <Border x:Name="Bd" CornerRadius="7" Background="{TemplateBinding Background}">
+                                <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
+                            </Border>
+                            <ControlTemplate.Triggers>
+                                <Trigger Property="IsChecked" Value="True">
+                                    <Setter TargetName="Bd" Property="Background" Value="{DynamicResource FrostTabSelectedBrush}" />
+                                    <Setter Property="Foreground" Value="{DynamicResource TextFillColorPrimaryBrush}" />
+                                </Trigger>
+                                <Trigger Property="IsMouseOver" Value="True">
+                                    <Setter TargetName="Bd" Property="Background" Value="{DynamicResource FrostHoverBrush}" />
+                                    <Setter Property="Foreground" Value="{DynamicResource TextFillColorPrimaryBrush}" />
+                                </Trigger>
+                                <Trigger Property="IsPressed" Value="True">
+                                    <Setter TargetName="Bd" Property="Background" Value="{DynamicResource FrostPressedBrush}" />
+                                </Trigger>
+                            </ControlTemplate.Triggers>
+                        </ControlTemplate>
+                    </Setter.Value>
+                </Setter>
+            </Style>
+
+            <!-- Glass toggle used beside the search box (lock, subfolders, filters) and for Aa / .* / W / Path -->
             <Style x:Key="PillToggle" TargetType="ToggleButton">
-                <Setter Property="Height" Value="32" />
-                <Setter Property="MinWidth" Value="36" />
+                <Setter Property="Height" Value="34" />
+                <Setter Property="MinWidth" Value="34" />
                 <Setter Property="Padding" Value="10,0" />
-                <Setter Property="Margin" Value="3,0,0,0" />
+                <Setter Property="Margin" Value="6,0,0,0" />
                 <Setter Property="FontSize" Value="13" />
                 <Setter Property="FontWeight" Value="SemiBold" />
-                <Setter Property="Background" Value="{DynamicResource ControlFillColorDefaultBrush}" />
-                <Setter Property="BorderBrush" Value="{DynamicResource ControlStrokeColorDefaultBrush}" />
-                <Setter Property="Foreground" Value="{DynamicResource TextFillColorSecondaryBrush}" />
+                <Setter Property="Background" Value="{DynamicResource FrostCardBrush}" />
+                <Setter Property="BorderBrush" Value="{DynamicResource FrostCardStrokeBrush}" />
+                <Setter Property="Foreground" Value="{DynamicResource FrostTextSecondaryBrush}" />
                 <Setter Property="Cursor" Value="Hand" />
                 <Setter Property="Template">
                     <Setter.Value>
                         <ControlTemplate TargetType="ToggleButton">
-                            <Border x:Name="Bd" CornerRadius="8" Background="{TemplateBinding Background}"
+                            <Border x:Name="Bd" CornerRadius="9" Background="{TemplateBinding Background}"
                                     BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="1" Padding="{TemplateBinding Padding}">
                                 <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
                             </Border>
                             <ControlTemplate.Triggers>
                                 <Trigger Property="IsMouseOver" Value="True">
-                                    <Setter TargetName="Bd" Property="Background" Value="{DynamicResource ControlFillColorSecondaryBrush}" />
+                                    <Setter TargetName="Bd" Property="Background" Value="{DynamicResource FrostTabSelectedBrush}" />
                                     <Setter Property="Foreground" Value="{DynamicResource TextFillColorPrimaryBrush}" />
                                 </Trigger>
                                 <Trigger Property="IsChecked" Value="True">
@@ -87,9 +151,32 @@
                 </Setter>
             </Style>
 
-            <!-- Selected rows in the file lists: a tint of the Windows accent colour, so text keeps its normal colour and
-                 stays readable. App.ApplyTheme replaces this with the user's actual accent colour at start-up. -->
-            <SolidColorBrush x:Key="RowSelectedBrush" Color="#550078D4" />
+            <!-- The "Jump to any folder" box in the middle of the title bar: it looks like a search box and opens the jump list -->
+            <Style x:Key="JumpPill" TargetType="Button">
+                <Setter Property="Height" Value="26" />
+                <Setter Property="FontSize" Value="12.5" />
+                <Setter Property="Background" Value="{DynamicResource FrostFieldBrush}" />
+                <Setter Property="BorderBrush" Value="{DynamicResource FrostFieldStrokeBrush}" />
+                <Setter Property="Foreground" Value="{DynamicResource FrostTextSecondaryBrush}" />
+                <Setter Property="Cursor" Value="Hand" />
+                <Setter Property="Focusable" Value="False" />
+                <Setter Property="Template">
+                    <Setter.Value>
+                        <ControlTemplate TargetType="Button">
+                            <Border x:Name="Bd" CornerRadius="13" Background="{TemplateBinding Background}"
+                                    BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="1" Padding="12,0,8,0">
+                                <ContentPresenter VerticalAlignment="Center" />
+                            </Border>
+                            <ControlTemplate.Triggers>
+                                <Trigger Property="IsMouseOver" Value="True">
+                                    <Setter TargetName="Bd" Property="BorderBrush" Value="{DynamicResource FrostActiveStrokeBrush}" />
+                                    <Setter Property="Foreground" Value="{DynamicResource TextFillColorPrimaryBrush}" />
+                                </Trigger>
+                            </ControlTemplate.Triggers>
+                        </ControlTemplate>
+                    </Setter.Value>
+                </Setter>
+            </Style>
 
             <!-- One segment of the address bar -->
             <Style x:Key="CrumbButton" TargetType="Button">
@@ -109,10 +196,10 @@
                             </Border>
                             <ControlTemplate.Triggers>
                                 <Trigger Property="IsMouseOver" Value="True">
-                                    <Setter TargetName="Bd" Property="Background" Value="{DynamicResource SubtleFillColorSecondaryBrush}" />
+                                    <Setter TargetName="Bd" Property="Background" Value="{DynamicResource FrostHoverBrush}" />
                                 </Trigger>
                                 <Trigger Property="IsPressed" Value="True">
-                                    <Setter TargetName="Bd" Property="Background" Value="{DynamicResource SubtleFillColorTertiaryBrush}" />
+                                    <Setter TargetName="Bd" Property="Background" Value="{DynamicResource FrostPressedBrush}" />
                                 </Trigger>
                             </ControlTemplate.Triggers>
                         </ControlTemplate>
@@ -123,24 +210,26 @@
             <!-- A place in the sidebar -->
             <Style x:Key="SidebarButton" TargetType="Button">
                 <Setter Property="Background" Value="Transparent" />
-                <Setter Property="BorderThickness" Value="0" />
+                <Setter Property="BorderBrush" Value="Transparent" />
+                <Setter Property="BorderThickness" Value="1" />
                 <Setter Property="Foreground" Value="{DynamicResource TextFillColorPrimaryBrush}" />
                 <Setter Property="HorizontalContentAlignment" Value="Stretch" />
-                <Setter Property="Padding" Value="10,6" />
+                <Setter Property="Padding" Value="9,5" />
                 <Setter Property="Margin" Value="0,1" />
                 <Setter Property="Focusable" Value="False" />
                 <Setter Property="Template">
                     <Setter.Value>
                         <ControlTemplate TargetType="Button">
-                            <Border x:Name="Bd" CornerRadius="6" Background="{TemplateBinding Background}" Padding="{TemplateBinding Padding}">
+                            <Border x:Name="Bd" CornerRadius="7" Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}"
+                                    BorderThickness="{TemplateBinding BorderThickness}" Padding="{TemplateBinding Padding}">
                                 <ContentPresenter HorizontalAlignment="Stretch" VerticalAlignment="Center" />
                             </Border>
                             <ControlTemplate.Triggers>
                                 <Trigger Property="IsMouseOver" Value="True">
-                                    <Setter TargetName="Bd" Property="Background" Value="{DynamicResource SubtleFillColorSecondaryBrush}" />
+                                    <Setter TargetName="Bd" Property="Background" Value="{DynamicResource FrostHoverBrush}" />
                                 </Trigger>
                                 <Trigger Property="IsPressed" Value="True">
-                                    <Setter TargetName="Bd" Property="Background" Value="{DynamicResource SubtleFillColorTertiaryBrush}" />
+                                    <Setter TargetName="Bd" Property="Background" Value="{DynamicResource FrostPressedBrush}" />
                                 </Trigger>
                             </ControlTemplate.Triggers>
                         </ControlTemplate>
@@ -151,7 +240,7 @@
             <Style x:Key="FilterLabel" TargetType="TextBlock">
                 <Setter Property="FontSize" Value="11" />
                 <Setter Property="FontWeight" Value="SemiBold" />
-                <Setter Property="Foreground" Value="{DynamicResource TextFillColorSecondaryBrush}" />
+                <Setter Property="Foreground" Value="{DynamicResource FrostTextSecondaryBrush}" />
                 <Setter Property="Margin" Value="0,0,0,3" />
             </Style>
 
@@ -159,40 +248,37 @@
                 <Setter Property="Margin" Value="0,2,14,4" />
             </Style>
 
-            <!-- Tab headers: pill with accent underline when selected -->
+            <!-- Tab headers: a rounded chip that lights up when selected -->
             <Style x:Key="SearchTabItem" TargetType="TabItem">
-                <Setter Property="Padding" Value="12,6" />
-                <Setter Property="Margin" Value="0,0,4,0" />
-                <Setter Property="Foreground" Value="{DynamicResource TextFillColorSecondaryBrush}" />
+                <Setter Property="Padding" Value="10,0,6,0" />
+                <Setter Property="Margin" Value="0,0,4,2" />
+                <Setter Property="Foreground" Value="{DynamicResource FrostTextSecondaryBrush}" />
                 <Setter Property="Template">
                     <Setter.Value>
                         <ControlTemplate TargetType="TabItem">
-                            <Grid>
-                                <Border x:Name="Bd" CornerRadius="8" Background="Transparent" Padding="{TemplateBinding Padding}" MinWidth="90" MaxWidth="220"
-                                        ToolTip="{Binding Location}">
-                                    <DockPanel>
-                                        <Button x:Name="CloseBtn" DockPanel.Dock="Right" Style="{StaticResource IconButton}" Width="22" Height="22" FontSize="10"
-                                                Content="&#xE8BB;" Margin="8,0,-4,0" Opacity="0" ToolTip="Close tab (Ctrl+W)" AutomationProperties.Name="Close tab"
-                                                Command="{Binding DataContext.CloseTabCommand, RelativeSource={RelativeSource AncestorType=TabControl}}"
-                                                CommandParameter="{Binding}" />
-                                        <TextBlock DockPanel.Dock="Left" FontFamily="{StaticResource IconFont}" Text="{Binding TabGlyph}" FontSize="12" VerticalAlignment="Center" Margin="0,1,7,0" Opacity="0.75" />
-                                        <TextBlock x:Name="Title" Text="{Binding Title}" FontSize="13" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
-                                    </DockPanel>
-                                </Border>
-                                <Border x:Name="Underline" Height="3" CornerRadius="2" VerticalAlignment="Bottom" Margin="12,0,12,0"
-                                        Background="{DynamicResource AccentFillColorDefaultBrush}" Opacity="0" />
-                            </Grid>
+                            <Border x:Name="Bd" CornerRadius="8" Height="30" Background="Transparent" Padding="{TemplateBinding Padding}" MinWidth="90" MaxWidth="220"
+                                    ToolTip="{Binding Location}">
+                                <DockPanel>
+                                    <Button x:Name="CloseBtn" DockPanel.Dock="Right" Style="{StaticResource IconButton}" Width="22" Height="22" FontSize="9"
+                                            Content="&#xE8BB;" Margin="6,0,0,0" Opacity="0" ToolTip="Close tab (Ctrl+W)" AutomationProperties.Name="Close tab"
+                                            Command="{Binding DataContext.CloseTabCommand, RelativeSource={RelativeSource AncestorType=TabControl}}"
+                                            CommandParameter="{Binding}" />
+                                    <TextBlock x:Name="Glyph" DockPanel.Dock="Left" FontFamily="{StaticResource IconFont}" Text="{Binding TabGlyph}" FontSize="12" VerticalAlignment="Center" Margin="0,1,8,0" Opacity="0.8" />
+                                    <TextBlock x:Name="Title" Text="{Binding Title}" FontSize="12.5" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
+                                </DockPanel>
+                            </Border>
                             <ControlTemplate.Triggers>
                                 <Trigger Property="IsMouseOver" Value="True">
-                                    <Setter TargetName="Bd" Property="Background" Value="{DynamicResource SubtleFillColorSecondaryBrush}" />
+                                    <Setter TargetName="Bd" Property="Background" Value="{DynamicResource FrostHoverBrush}" />
                                     <Setter TargetName="CloseBtn" Property="Opacity" Value="1" />
                                 </Trigger>
                                 <Trigger Property="IsSelected" Value="True">
-                                    <Setter TargetName="Bd" Property="Background" Value="{DynamicResource CardBackgroundFillColorDefaultBrush}" />
-                                    <Setter TargetName="Underline" Property="Opacity" Value="1" />
+                                    <Setter TargetName="Bd" Property="Background" Value="{DynamicResource FrostTabSelectedBrush}" />
                                     <Setter TargetName="CloseBtn" Property="Opacity" Value="1" />
                                     <Setter Property="Foreground" Value="{DynamicResource TextFillColorPrimaryBrush}" />
                                     <Setter TargetName="Title" Property="FontWeight" Value="SemiBold" />
+                                    <Setter TargetName="Glyph" Property="Opacity" Value="1" />
+                                    <Setter TargetName="Glyph" Property="Foreground" Value="{DynamicResource AccentTextFillColorPrimaryBrush}" />
                                 </Trigger>
                             </ControlTemplate.Triggers>
                         </ControlTemplate>
@@ -212,9 +298,9 @@
                                     <RowDefinition Height="Auto" />
                                     <RowDefinition Height="*" />
                                 </Grid.RowDefinitions>
-                                <DockPanel Margin="10,8,10,0" LastChildFill="True">
-                                    <!-- Space reserved for the buttons PaneView lays over the right of the strip (new tab, window commands).
-                                         They live outside this template because a tab control exposes only its tabs to assistive technology. -->
+                                <DockPanel Margin="8,8,8,0" LastChildFill="True">
+                                    <!-- Space reserved for the new-tab button PaneView lays over the strip, just after the last tab. It lives
+                                         outside this template because a tab control exposes only its tabs to assistive technology. -->
                                     <Border DockPanel.Dock="Right" Width="{Binding Tag, RelativeSource={RelativeSource TemplatedParent}}" />
                                     <!-- The tab panel takes the remaining width so a crowded strip wraps onto a second row instead of clipping -->
                                     <TabPanel IsItemsHost="True" HorizontalAlignment="Left" />

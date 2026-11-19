@@ -25,7 +25,7 @@ dotnet test tests/FastFind.App.Tests --filter "FullyQualifiedName~OtherPaneTests
 - The window always runs as a normal user. Anything needing admin (reading the MFT) belongs in `FastFind.Service`, behind
   the named pipe. Never make the UI elevate.
 - Source files use **CRLF** line endings. When scripting edits, keep them; a text-mode Python read/write converts the whole
-  file to LF.
+  file to LF, and so does `sed -i` in Git Bash.
 
 ## Architecture
 
@@ -47,6 +47,19 @@ owns cross-pane actions (`ActivePane`, `OtherPane`, `OpenInOtherPane`, `IsDualPa
 **One `FilePaneView` per pane, reused across tabs.** The `TabControl` swaps the `DataContext` rather than creating a view
 per tab. Per-tab view state (scroll position, selection) is saved and restored in `OnDataContextChanged`. Anything you add
 to the view that depends on the tab must be reset there.
+
+**The main window is glass.** `MainWindow.Chrome.cs` asks Windows for the acrylic backdrop (the blurred desktop) and
+replaces the title bar using `WindowChrome`; Windows still draws minimise, maximise and close, and `CaptionSpacer` keeps
+their corner clear. Anything shown in the main window sits on that glass, so colour it with the translucent `Frost*`
+brushes rather than the theme's opaque fills. Those brushes are made in `Services/FrostTheme.cs` (dark, light and
+high-contrast values, following the accent colour) and replaced whenever the theme changes. The same file makes the
+pools of coloured light behind the panes (`Aurora` in `MainWindow.xaml`); how vivid the window looks is set by the
+alpha values there. `RootGrid` paints a tint over every pixel on purpose: areas of a backdrop window that nothing draws on keep stale pixels. The other windows
+(Settings, disk usage and so on) still have the ordinary title bar and backdrop.
+
+**The file list's row, cell and header styles are attached by key** (`RowStyle="{DynamicResource FileRowStyle}"` and so
+on in `FilePaneView.xaml`). The Fluent theme sets those properties on every `DataGrid` itself, so an implicit style in
+the grid's resources is silently ignored.
 
 **Keyboard shortcuts live in two places.** `MainWindow.OnPreviewKeyDown` handles window-level keys (tabs, panes, F1,
 Ctrl+P). `FilePaneView.HandleKey` handles pane keys; note the `inList` gate for keys that would clash with typing.

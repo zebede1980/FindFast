@@ -1,6 +1,7 @@
 using System.IO;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Controls.Primitives;
 using System.Windows.Input;
 using FastFind.App.ViewModels;
 
@@ -19,10 +20,36 @@ public partial class PaneView : UserControl
         GotKeyboardFocus += (_, _) => Activate();
         DragOver += OnDragOver;
         Drop += OnDrop;
+        Loaded += (_, _) =>
+        {
+            // The strip of tabs grows and shrinks as tabs come and go; the new-tab button follows its end.
+            if (_tabStrip == null && MainWindow.FindVisualChild<TabPanel>(Tabs) is { } strip)
+            {
+                _tabStrip = strip;
+                strip.SizeChanged += (_, _) => PlaceNewTabButton();
+            }
+            PlaceNewTabButton();
+        };
+        SizeChanged += (_, _) => PlaceNewTabButton();
     }
 
-    /// <summary>Tells the tab strip how much room to leave on its right for the buttons laid over it.</summary>
-    private void OnStripButtonsSizeChanged(object sender, SizeChangedEventArgs e) => Tabs.Tag = StripButtons.ActualWidth + 4;
+    private TabPanel? _tabStrip;
+
+    /// <summary>Tells the tab strip how much room to leave on its right for the new-tab button laid over it.</summary>
+    private void OnStripButtonsSizeChanged(object sender, SizeChangedEventArgs e)
+    {
+        Tabs.Tag = StripButtons.ActualWidth + 4;
+        PlaceNewTabButton();
+    }
+
+    /// <summary>Puts the new-tab button just after the last tab, or at the right-hand end once the strip has filled the pane.</summary>
+    private void PlaceNewTabButton()
+    {
+        const double edge = 8; // the strip's own margin inside the pane
+        double afterTabs = edge + (_tabStrip?.ActualWidth ?? 0);
+        double furthest = Math.Max(edge, Tabs.ActualWidth - StripButtons.ActualWidth - edge);
+        StripButtons.Margin = new Thickness(Math.Min(afterTabs, furthest), edge, 0, 0);
+    }
 
     /// <summary>The file view of the selected tab (the tab control shows one view and swaps its data).</summary>
     public FilePaneView? CurrentView => MainWindow.FindVisualChild<FilePaneView>(Tabs);

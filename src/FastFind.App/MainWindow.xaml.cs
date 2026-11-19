@@ -43,6 +43,7 @@ public partial class MainWindow : Window
         Height = s.WindowHeight;
         if (s.WindowMaximized) WindowState = WindowState.Maximized;
         ApplyLayout();
+        InitializeChrome();
 
         PreviewKeyDown += OnPreviewKeyDown;
         Closing += OnClosing;
@@ -149,6 +150,7 @@ public partial class MainWindow : Window
         base.OnSourceInitialized(e);
         var source = (HwndSource?)PresentationSource.FromVisual(this);
         source?.AddHook(WndProc);
+        ApplyChrome();
 
         var hwnd = new WindowInteropHelper(this).Handle;
         _hotkey = new GlobalHotkey(hwnd);
@@ -253,6 +255,7 @@ public partial class MainWindow : Window
             handled = true;
             return IntPtr.Zero;
         }
+        if (IsThemeMessage(msg)) QueueThemeRefresh();
         if (msg == WM_DEVICECHANGE)
         {
             // Volume arrivals (USB, BitLocker unlock, mounted VHD): look for new drives to index and list.
@@ -328,7 +331,7 @@ public partial class MainWindow : Window
         var source = PresentationSource.FromVisual(this);
         if (source?.CompositionTarget != null) origin = source.CompositionTarget.TransformFromDevice.Transform(origin);
         jump.Left = origin.X + Math.Max(0, (ActualWidth - jump.Width) / 2);
-        jump.Top = origin.Y + 70;
+        jump.Top = origin.Y + TitleBar.ActualHeight + 6; // just under the jump box in the title bar
         jump.Show();
     }
 

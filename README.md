@@ -15,10 +15,16 @@ A tab is a **location plus a query**:
 ### File manager
 
 * **Two panes side by side** (Ctrl+\ for one or two), each with its own **tabs**, address bar, history and filter box.
-  Tab moves between panes; drag the divider to resize, double-click it to equalise. **Open in other pane**
+  Tab moves between panes; drag the gap between them to resize, double-click it to equalise. **Open in other pane**
   (right-click, or Shift+Enter) shows a folder on the opposite side, bringing up the second pane if only one is showing.
   **Lock a tab** (padlock button or Ctrl+Shift+L) and every folder you open from it opens in the other pane instead,
   so you can work through a folder's contents one by one without losing your place.
+* **A glass window**: the desktop shows through, blurred, behind panes of tinted glass, in dark or light to match
+  Windows (or whichever you pick in Settings). Pools of coloured light glow behind the panes, in your Windows accent
+  colour and three companions worked out from it. With two panes showing, the edge of the one you are working in
+  lights up in the accent colour. The title bar holds the **jump box** (Ctrl+P) and the buttons for the sidebar, the
+  second pane, the preview pane, settings and help. This needs Windows 11 22H2 or later; on older Windows, or with a
+  high-contrast theme, the window is drawn plainly and keeps the ordinary title bar.
 * **Address bar** with clickable breadcrumbs; Ctrl+L to type a path (`%TEMP%` and `~` work).
   **Back / forward / up** with Alt+arrows, Backspace or the extra mouse buttons.
 * **Copy and move** with the same engine, progress and conflict dialogs as Explorer: F5 / F6 to the other pane,

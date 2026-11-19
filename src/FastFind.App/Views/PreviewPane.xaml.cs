@@ -114,7 +114,7 @@ public partial class PreviewPane : UserControl
     private void AddDetail(string label, string value)
     {
         var l = new TextBlock { Text = label, FontSize = 12, Margin = new Thickness(0, 2, 0, 2) };
-        l.SetResourceReference(TextBlock.ForegroundProperty, "TextFillColorSecondaryBrush");
+        l.SetResourceReference(TextBlock.ForegroundProperty, "FrostTextSecondaryBrush");
         Labels.Children.Add(l);
         var v = new TextBlock { Text = value, FontSize = 12, Margin = new Thickness(0, 2, 0, 2), TextTrimming = TextTrimming.CharacterEllipsis, ToolTip = value };
         v.SetResourceReference(TextBlock.ForegroundProperty, "TextFillColorPrimaryBrush");

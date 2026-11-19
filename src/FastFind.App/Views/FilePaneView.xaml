@@ -4,7 +4,7 @@
              xmlns:vm="clr-namespace:FastFind.App.ViewModels"
              xmlns:ctl="clr-namespace:FastFind.App.Controls"
              AllowDrop="True" Focusable="False">
-    <Grid Margin="10,8,10,0">
+    <Grid Margin="8,6,8,0">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto" />
             <RowDefinition Height="Auto" />
@@ -27,12 +27,12 @@
                 <Button Style="{StaticResource IconButton}" x:Name="UpButton" Content="&#xE74A;" ToolTip="Up to the containing folder (Alt+Up or Backspace)" AutomationProperties.Name="Up" Click="OnUpClick" IsEnabled="{Binding CanGoUp}" />
             </StackPanel>
 
-            <Border x:Name="AddressBorder" Grid.Column="1" CornerRadius="8" Height="34" BorderThickness="1" Cursor="IBeam"
-                    Background="{DynamicResource ControlFillColorDefaultBrush}" MouseLeftButtonDown="OnAddressBarMouseDown"
+            <Border x:Name="AddressBorder" Grid.Column="1" CornerRadius="9" Height="32" BorderThickness="1" Cursor="IBeam"
+                    Background="{DynamicResource FrostFieldBrush}" MouseLeftButtonDown="OnAddressBarMouseDown"
                     ToolTip="Click to type a path (Ctrl+L)">
                 <Border.Style>
                     <Style TargetType="Border">
-                        <Setter Property="BorderBrush" Value="{DynamicResource ControlStrokeColorDefaultBrush}" />
+                        <Setter Property="BorderBrush" Value="{DynamicResource FrostFieldStrokeBrush}" />
                         <Style.Triggers>
                             <DataTrigger Binding="{Binding IsKeyboardFocusWithin, ElementName=AddressBox}" Value="True">
                                 <Setter Property="BorderBrush" Value="{DynamicResource AccentFillColorDefaultBrush}" />
@@ -45,9 +45,9 @@
                         <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
                             <StackPanel Orientation="Horizontal" Margin="6,0,0,0" Visibility="{Binding IsEverywhere, Converter={StaticResource BoolToVisibility}}">
                                 <TextBlock FontFamily="{StaticResource IconFont}" Text="&#xE721;" FontSize="13" VerticalAlignment="Center" Margin="0,1,8,0"
-                                           Foreground="{DynamicResource TextFillColorSecondaryBrush}" />
+                                           Foreground="{DynamicResource FrostTextSecondaryBrush}" />
                                 <TextBlock Text="Everywhere" FontSize="13" VerticalAlignment="Center" Foreground="{DynamicResource TextFillColorPrimaryBrush}" />
-                                <TextBlock Text="  all indexed drives" FontSize="12" VerticalAlignment="Center" Foreground="{DynamicResource TextFillColorTertiaryBrush}" />
+                                <TextBlock Text="  all indexed drives" FontSize="12" VerticalAlignment="Center" Foreground="{DynamicResource FrostTextTertiaryBrush}" />
                             </StackPanel>
                             <ItemsControl ItemsSource="{Binding Breadcrumbs}" Focusable="False">
                                 <ItemsControl.ItemsPanel>
@@ -61,7 +61,7 @@
                                             <Button Style="{StaticResource CrumbButton}" Content="{Binding Name}" Tag="{Binding Path}" Click="OnCrumbClick"
                                                     ToolTip="{Binding Path}" AllowDrop="True" DragOver="OnCrumbDragOver" Drop="OnCrumbDrop" />
                                             <TextBlock FontFamily="{StaticResource IconFont}" Text="&#xE76C;" FontSize="8" VerticalAlignment="Center" Margin="1,1,1,0"
-                                                       Foreground="{DynamicResource TextFillColorTertiaryBrush}" />
+                                                       Foreground="{DynamicResource FrostTextTertiaryBrush}" />
                                         </StackPanel>
                                     </DataTemplate>
                                 </ItemsControl.ItemTemplate>
@@ -82,12 +82,38 @@
             <Button x:Name="RefreshButton" Grid.Column="2" Style="{StaticResource IconButton}" Content="&#xE72C;" ToolTip="Refresh (Ctrl+R, or F5 when nothing is selected)" AutomationProperties.Name="Refresh" Click="OnRefreshClick" Margin="4,0,-2,0" />
         </Grid>
 
-        <!-- Filter / search box -->
+        <!-- Filter / search box, with the switches that change what the list shows beside it -->
         <Grid Grid.Row="1" Margin="0,6,0,0">
-            <Border x:Name="SearchBorder" CornerRadius="8" Height="34" Background="{DynamicResource ControlFillColorDefaultBrush}" BorderThickness="1">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="Auto" />
+            </Grid.ColumnDefinitions>
+            <StackPanel Grid.Column="1" Orientation="Horizontal">
+                <ToggleButton x:Name="LockToggle" Style="{StaticResource PillToggle}" Padding="0" IsChecked="{Binding IsLocked}" AutomationProperties.Name="Lock tab"
+                              ToolTip="Lock this tab: folders you open from it open in the other pane, so you keep your place here (Ctrl+Shift+L)">
+                    <TextBlock FontFamily="{StaticResource IconFont}" Text="&#xE72E;" FontSize="13" />
+                </ToggleButton>
+                <ToggleButton x:Name="SubfoldersToggle" Style="{StaticResource PillToggle}" IsChecked="{Binding Recursive}" AutomationProperties.Name="Include subfolders"
+                              ToolTip="Include subfolders: show this folder and everything beneath it as one list (Ctrl+Shift+R)"
+                              Visibility="{Binding IsEverywhere, Converter={StaticResource InverseBoolToVisibility}}">
+                    <StackPanel Orientation="Horizontal">
+                        <TextBlock FontFamily="{StaticResource IconFont}" Text="&#xE8B7;" FontSize="13" VerticalAlignment="Center" Margin="0,1,6,0" />
+                        <TextBlock Text="Subfolders" FontSize="12" VerticalAlignment="Center" />
+                    </StackPanel>
+                </ToggleButton>
+                <ToggleButton x:Name="FiltersToggle" Style="{StaticResource PillToggle}" Padding="0" IsChecked="{Binding FiltersVisible}" ToolTip="Filters and match options"
+                              AutomationProperties.Name="Filters">
+                    <Grid>
+                        <TextBlock FontFamily="{StaticResource IconFont}" Text="&#xE71C;" FontSize="13" />
+                        <Ellipse Width="7" Height="7" Fill="{DynamicResource SystemFillColorAttentionBrush}" HorizontalAlignment="Right" VerticalAlignment="Top" Margin="0,-4,-6,0"
+                                 Visibility="{Binding HasFilters, Converter={StaticResource BoolToVisibility}}" />
+                    </Grid>
+                </ToggleButton>
+            </StackPanel>
+            <Border x:Name="SearchBorder" CornerRadius="9" Height="34" Background="{DynamicResource FrostFieldBrush}" BorderThickness="1">
                 <Border.Style>
                     <Style TargetType="Border">
-                        <Setter Property="BorderBrush" Value="{DynamicResource ControlStrokeColorDefaultBrush}" />
+                        <Setter Property="BorderBrush" Value="{DynamicResource FrostFieldStrokeBrush}" />
                         <Style.Triggers>
                             <DataTrigger Binding="{Binding IsKeyboardFocusWithin, ElementName=SearchBox}" Value="True">
                                 <Setter Property="BorderBrush" Value="{DynamicResource AccentFillColorDefaultBrush}" />
@@ -103,7 +129,7 @@
                         <ColumnDefinition Width="Auto" />
                     </Grid.ColumnDefinitions>
                     <TextBlock FontFamily="{StaticResource IconFont}" Text="&#xE721;" FontSize="13" Margin="12,0,9,0" VerticalAlignment="Center"
-                               Foreground="{DynamicResource TextFillColorSecondaryBrush}" />
+                               Foreground="{DynamicResource FrostTextSecondaryBrush}" />
                     <TextBox x:Name="SearchBox" Grid.Column="1" AutomationProperties.Name="Filter or search" Background="Transparent" BorderThickness="0" Padding="0" FontSize="14"
                              VerticalContentAlignment="Center" VerticalAlignment="Stretch" CaretBrush="{DynamicResource TextFillColorPrimaryBrush}"
                              Foreground="{DynamicResource TextFillColorPrimaryBrush}"
@@ -115,7 +141,7 @@
                         </TextBox.Template>
                     </TextBox>
                     <TextBlock Grid.Column="1" Text="{Binding SearchPlaceholder}" FontSize="13" IsHitTestVisible="False" TextTrimming="CharacterEllipsis"
-                               VerticalAlignment="Center" Margin="2,0,0,0" Foreground="{DynamicResource TextFillColorTertiaryBrush}"
+                               VerticalAlignment="Center" Margin="2,0,0,0" Foreground="{DynamicResource FrostTextTertiaryBrush}"
                                Visibility="{Binding Text.IsEmpty, ElementName=SearchBox, Converter={StaticResource BoolToVisibility}}" />
                     <ProgressBar Grid.Column="2" Width="36" Height="3" Margin="8,0" IsIndeterminate="True" VerticalAlignment="Center"
                                  Visibility="{Binding IsSearching, Converter={StaticResource BoolToVisibility}}" />
@@ -126,30 +152,8 @@
             </Border>
         </Grid>
 
-        <!-- Command bar: the everyday file actions on the left, view options on the right -->
-        <DockPanel Grid.Row="2" Margin="-3,5,0,0">
-            <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
-                <ToggleButton x:Name="LockToggle" Style="{StaticResource PillToggle}" Height="30" IsChecked="{Binding IsLocked}" AutomationProperties.Name="Lock tab"
-                              ToolTip="Lock this tab: folders you open from it open in the other pane, so you keep your place here (Ctrl+Shift+L)">
-                    <TextBlock FontFamily="{StaticResource IconFont}" Text="&#xE72E;" FontSize="13" />
-                </ToggleButton>
-                <ToggleButton x:Name="SubfoldersToggle" Style="{StaticResource PillToggle}" Height="30" IsChecked="{Binding Recursive}" AutomationProperties.Name="Include subfolders"
-                              ToolTip="Include subfolders: show this folder and everything beneath it as one list (Ctrl+Shift+R)"
-                              Visibility="{Binding IsEverywhere, Converter={StaticResource InverseBoolToVisibility}}">
-                    <StackPanel Orientation="Horizontal">
-                        <TextBlock FontFamily="{StaticResource IconFont}" Text="&#xE8B7;" FontSize="13" VerticalAlignment="Center" Margin="0,1,6,0" />
-                        <TextBlock Text="Subfolders" FontSize="12" VerticalAlignment="Center" />
-                    </StackPanel>
-                </ToggleButton>
-                <ToggleButton x:Name="FiltersToggle" Style="{StaticResource PillToggle}" Height="30" IsChecked="{Binding FiltersVisible}" ToolTip="Filters and match options"
-                              AutomationProperties.Name="Filters">
-                    <Grid>
-                        <TextBlock FontFamily="{StaticResource IconFont}" Text="&#xE71C;" FontSize="13" />
-                        <Ellipse Width="7" Height="7" Fill="{DynamicResource SystemFillColorAttentionBrush}" HorizontalAlignment="Right" VerticalAlignment="Top" Margin="0,-4,-6,0"
-                                 Visibility="{Binding HasFilters, Converter={StaticResource BoolToVisibility}}" />
-                    </Grid>
-                </ToggleButton>
-            </StackPanel>
+        <!-- Command bar: the everyday file actions -->
+        <DockPanel Grid.Row="2" Margin="-1,5,0,0" ClipToBounds="True">
             <StackPanel Orientation="Horizontal">
                 <StackPanel.Resources>
                     <Style TargetType="Button" BasedOn="{StaticResource IconButton}">
@@ -161,7 +165,7 @@
                         <Setter Property="Width" Value="1" />
                         <Setter Property="Height" Value="16" />
                         <Setter Property="Margin" Value="5,0" />
-                        <Setter Property="Fill" Value="{DynamicResource DividerStrokeColorDefaultBrush}" />
+                        <Setter Property="Fill" Value="{DynamicResource FrostDividerBrush}" />
                     </Style>
                 </StackPanel.Resources>
                 <Button x:Name="NewFolderButton" Content="&#xE8F4;" ToolTip="New folder (Ctrl+Shift+N or F7)" AutomationProperties.Name="New folder" Click="OnNewFolderClick" IsEnabled="{Binding CanCreate}" />
@@ -175,16 +179,25 @@
                 <Button x:Name="DeleteButton" Content="&#xE74D;" ToolTip="Delete to the Recycle Bin (Del); Shift+Del deletes permanently" AutomationProperties.Name="Delete" Click="OnDeleteClick" IsEnabled="{Binding HasSelection}" />
                 <StackPanel Orientation="Horizontal" Visibility="{Binding DataContext.IsDualPane, RelativeSource={RelativeSource AncestorType=Window}, Converter={StaticResource BoolToVisibility}}">
                     <Rectangle />
-                    <Button x:Name="CopyAcrossButton" Width="40" ToolTip="Copy to the folder in the other pane (F5)" AutomationProperties.Name="Copy to other pane" Click="OnCopyAcrossClick" IsEnabled="{Binding HasSelection}">
-                        <StackPanel Orientation="Horizontal">
+                    <!-- These two say what they do when the pane is wide enough to spare the room (see OnPaneSizeChanged) -->
+                    <Button x:Name="CopyAcrossButton" Width="NaN" MinWidth="40" ToolTip="Copy to the folder in the other pane (F5)" AutomationProperties.Name="Copy to other pane" Click="OnCopyAcrossClick" IsEnabled="{Binding HasSelection}">
+                        <StackPanel Orientation="Horizontal" Margin="8,0">
                             <TextBlock Text="&#xE8C8;" FontSize="14" />
                             <TextBlock Text="&#xE72A;" FontSize="10" VerticalAlignment="Center" Margin="3,1,0,0" />
+                            <StackPanel x:Name="CopyAcrossLabel" Orientation="Horizontal" VerticalAlignment="Center" Margin="7,0,0,0">
+                                <TextBlock FontFamily="{StaticResource UiFont}" FontSize="12" Text="Copy across" />
+                                <TextBlock FontFamily="{StaticResource UiFont}" FontSize="12" Text="F5" Margin="6,0,0,0" Opacity="0.7" />
+                            </StackPanel>
                         </StackPanel>
                     </Button>
-                    <Button x:Name="MoveAcrossButton" Width="40" ToolTip="Move to the folder in the other pane (F6)" AutomationProperties.Name="Move to other pane" Click="OnMoveAcrossClick" IsEnabled="{Binding HasSelection}">
-                        <StackPanel Orientation="Horizontal">
+                    <Button x:Name="MoveAcrossButton" Width="NaN" MinWidth="40" ToolTip="Move to the folder in the other pane (F6)" AutomationProperties.Name="Move to other pane" Click="OnMoveAcrossClick" IsEnabled="{Binding HasSelection}">
+                        <StackPanel Orientation="Horizontal" Margin="8,0">
                             <TextBlock Text="&#xE8B7;" FontSize="14" />
                             <TextBlock Text="&#xE72A;" FontSize="10" VerticalAlignment="Center" Margin="3,1,0,0" />
+                            <StackPanel x:Name="MoveAcrossLabel" Orientation="Horizontal" VerticalAlignment="Center" Margin="7,0,0,0">
+                                <TextBlock FontFamily="{StaticResource UiFont}" FontSize="12" Text="Move across" />
+                                <TextBlock FontFamily="{StaticResource UiFont}" FontSize="12" Text="F6" Margin="6,0,0,0" Opacity="0.7" />
+                            </StackPanel>
                         </StackPanel>
                     </Button>
                 </StackPanel>
@@ -192,13 +205,13 @@
         </DockPanel>
 
         <!-- Filter panel -->
-        <Border Grid.Row="3" Margin="0,6,0,0" CornerRadius="8" Padding="12,8,12,6"
-                Background="{DynamicResource CardBackgroundFillColorDefaultBrush}" BorderBrush="{DynamicResource CardStrokeColorDefaultBrush}" BorderThickness="1"
+        <Border Grid.Row="3" Margin="0,6,0,0" CornerRadius="9" Padding="12,8,12,6"
+                Background="{DynamicResource FrostFieldBrush}" BorderBrush="{DynamicResource FrostFieldStrokeBrush}" BorderThickness="1"
                 Visibility="{Binding FiltersVisible, Converter={StaticResource BoolToVisibility}}">
             <WrapPanel>
                 <StackPanel Style="{StaticResource FilterGroup}">
                     <TextBlock Style="{StaticResource FilterLabel}" Text="MATCH" />
-                    <StackPanel Orientation="Horizontal" Margin="-3,0,0,0">
+                    <StackPanel Orientation="Horizontal" Margin="-6,0,0,0">
                         <ToggleButton Style="{StaticResource PillToggle}" Content="Aa" IsChecked="{Binding MatchCase}" ToolTip="Match case" />
                         <ToggleButton Style="{StaticResource PillToggle}" Content=".*" IsChecked="{Binding UseRegex}" ToolTip="Regular expressions" FontFamily="Consolas" />
                         <ToggleButton Style="{StaticResource PillToggle}" Content="W" IsChecked="{Binding WholeWord}" ToolTip="Whole word" />
@@ -246,11 +259,12 @@
         <Grid Grid.Row="4" Margin="0,5,0,0">
             <DataGrid x:Name="Grid" ItemsSource="{Binding Results}" AutoGenerateColumns="False" IsReadOnly="True" CanUserAddRows="False"
                       CanUserDeleteRows="False" CanUserReorderColumns="True" CanUserResizeColumns="True" CanUserSortColumns="True"
-                      HeadersVisibility="Column" GridLinesVisibility="None" RowHeight="28" SelectionMode="Extended" SelectionUnit="FullRow"
+                      HeadersVisibility="Column" GridLinesVisibility="None" RowHeight="29" SelectionMode="Extended" SelectionUnit="FullRow"
                       EnableRowVirtualization="True" EnableColumnVirtualization="False"
                       VirtualizingPanel.IsVirtualizing="True" VirtualizingPanel.VirtualizationMode="Recycling"
                       ScrollViewer.CanContentScroll="True" ScrollViewer.IsDeferredScrollingEnabled="False"
                       Background="Transparent" BorderThickness="0" FontSize="13" AllowDrop="True"
+                      RowStyle="{DynamicResource FileRowStyle}" CellStyle="{DynamicResource FileCellStyle}" ColumnHeaderStyle="{DynamicResource FileHeaderStyle}"
                       Sorting="OnSorting" MouseDoubleClick="OnRowDoubleClick" PreviewMouseLeftButtonDown="OnGridPreviewMouseLeftButtonDown"
                       PreviewMouseLeftButtonUp="OnGridPreviewMouseLeftButtonUp" PreviewMouseRightButtonDown="OnGridPreviewMouseRightButtonDown"
                       MouseMove="OnGridMouseMove" PreviewKeyDown="OnGridPreviewKeyDown" PreviewMouseDown="OnGridPreviewMouseDown"
@@ -260,23 +274,110 @@
                     <ContextMenu x:Name="RowMenu" />
                 </DataGrid.ContextMenu>
                 <DataGrid.Resources>
-                    <Style TargetType="DataGridRow" BasedOn="{StaticResource {x:Type DataGridRow}}">
+                    <!-- A row is one rounded strip: the highlight under the mouse and the selection are painted on the row, not on
+                         its cells. Selection is a tint of the accent colour rather than the theme's solid accent, so the text
+                         keeps its normal colour and stays easy to read. The 1px gap keeps neighbouring selected rows apart. -->
+                    <Style x:Key="FileRowStyle" TargetType="DataGridRow">
                         <Setter Property="Opacity" Value="{Binding IsHidden, Converter={StaticResource HiddenOpacity}}" />
+                        <Setter Property="Background" Value="Transparent" />
+                        <Setter Property="Foreground" Value="{DynamicResource TextFillColorPrimaryBrush}" />
+                        <Setter Property="SnapsToDevicePixels" Value="True" />
+                        <Setter Property="Template">
+                            <Setter.Value>
+                                <ControlTemplate TargetType="DataGridRow">
+                                    <Border x:Name="Bd" CornerRadius="6" Margin="0,0,0,1" Background="{TemplateBinding Background}">
+                                        <Grid>
+                                            <!-- A selected row also carries a bright bar at its left end, so a selection is easy to pick out at a glance -->
+                                            <Border x:Name="Bar" Width="3" CornerRadius="1.5" HorizontalAlignment="Left" Margin="0,6" Visibility="Collapsed"
+                                                    Background="{DynamicResource FrostActiveStrokeBrush}" />
+                                            <DataGridCellsPresenter ItemsPanel="{TemplateBinding ItemsPanel}" SnapsToDevicePixels="{TemplateBinding SnapsToDevicePixels}" />
+                                        </Grid>
+                                    </Border>
+                                    <ControlTemplate.Triggers>
+                                        <Trigger Property="IsMouseOver" Value="True">
+                                            <Setter TargetName="Bd" Property="Background" Value="{DynamicResource FrostHoverBrush}" />
+                                        </Trigger>
+                                        <Trigger Property="IsSelected" Value="True">
+                                            <Setter TargetName="Bd" Property="Background" Value="{DynamicResource RowSelectedBrush}" />
+                                            <Setter TargetName="Bar" Property="Visibility" Value="Visible" />
+                                        </Trigger>
+                                    </ControlTemplate.Triggers>
+                                </ControlTemplate>
+                            </Setter.Value>
+                        </Setter>
                     </Style>
-                    <!-- Selection is painted by the cells (that is where the theme paints it): a tint of the accent colour instead of
-                         the theme's solid accent, so the text keeps its normal colour and stays easy to read. -->
-                    <Style TargetType="DataGridCell" BasedOn="{StaticResource {x:Type DataGridCell}}">
-                        <Style.Triggers>
-                            <Trigger Property="IsSelected" Value="True">
-                                <Setter Property="Background" Value="{DynamicResource RowSelectedBrush}" />
-                                <Setter Property="BorderBrush" Value="Transparent" />
-                                <Setter Property="Foreground" Value="{DynamicResource TextFillColorPrimaryBrush}" />
-                            </Trigger>
-                        </Style.Triggers>
+                    <Style x:Key="FileCellStyle" TargetType="DataGridCell">
+                        <Setter Property="Background" Value="Transparent" />
+                        <Setter Property="BorderThickness" Value="0" />
+                        <Setter Property="Padding" Value="8,0" />
+                        <Setter Property="Foreground" Value="{DynamicResource TextFillColorPrimaryBrush}" />
+                        <Setter Property="FocusVisualStyle" Value="{x:Null}" />
+                        <Setter Property="Template">
+                            <Setter.Value>
+                                <ControlTemplate TargetType="DataGridCell">
+                                    <Border Background="Transparent" Padding="{TemplateBinding Padding}">
+                                        <ContentPresenter VerticalAlignment="Center" />
+                                    </Border>
+                                </ControlTemplate>
+                            </Setter.Value>
+                        </Setter>
+                    </Style>
+                    <!-- Column headings sit quietly on the glass: small text, a highlight under the mouse, an arrow on the sorted column -->
+                    <Style x:Key="HeaderGrip" TargetType="Thumb">
+                        <Setter Property="Width" Value="8" />
+                        <Setter Property="Cursor" Value="SizeWE" />
+                        <Setter Property="Template">
+                            <Setter.Value>
+                                <ControlTemplate TargetType="Thumb">
+                                    <Border Background="Transparent" />
+                                </ControlTemplate>
+                            </Setter.Value>
+                        </Setter>
+                    </Style>
+                    <Style x:Key="FileHeaderStyle" TargetType="DataGridColumnHeader">
+                        <Setter Property="Background" Value="Transparent" />
+                        <Setter Property="Foreground" Value="{DynamicResource FrostTextSecondaryBrush}" />
+                        <Setter Property="FontSize" Value="11.5" />
+                        <Setter Property="Height" Value="28" />
+                        <Setter Property="Padding" Value="8,0" />
+                        <Setter Property="HorizontalContentAlignment" Value="Left" />
+                        <Setter Property="Template">
+                            <Setter.Value>
+                                <ControlTemplate TargetType="DataGridColumnHeader">
+                                    <Grid Background="Transparent">
+                                        <Border x:Name="Bd" CornerRadius="5" Margin="0,2,0,3" Padding="{TemplateBinding Padding}" Background="Transparent">
+                                            <StackPanel Orientation="Horizontal" HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}" VerticalAlignment="Center">
+                                                <ContentPresenter RecognizesAccessKey="False" />
+                                                <TextBlock x:Name="Sort" FontFamily="{StaticResource IconFont}" Text="&#xE70E;" FontSize="8" Margin="6,1,0,0" VerticalAlignment="Center" Visibility="Collapsed" />
+                                            </StackPanel>
+                                        </Border>
+                                        <Thumb x:Name="PART_LeftHeaderGripper" HorizontalAlignment="Left" Style="{StaticResource HeaderGrip}" />
+                                        <Thumb x:Name="PART_RightHeaderGripper" HorizontalAlignment="Right" Style="{StaticResource HeaderGrip}" />
+                                    </Grid>
+                                    <ControlTemplate.Triggers>
+                                        <Trigger Property="IsMouseOver" Value="True">
+                                            <Setter TargetName="Bd" Property="Background" Value="{DynamicResource FrostHoverBrush}" />
+                                            <Setter Property="Foreground" Value="{DynamicResource TextFillColorPrimaryBrush}" />
+                                        </Trigger>
+                                        <Trigger Property="SortDirection" Value="Ascending">
+                                            <Setter TargetName="Sort" Property="Visibility" Value="Visible" />
+                                        </Trigger>
+                                        <Trigger Property="SortDirection" Value="Descending">
+                                            <Setter TargetName="Sort" Property="Visibility" Value="Visible" />
+                                            <Setter TargetName="Sort" Property="Text" Value="&#xE70D;" />
+                                        </Trigger>
+                                    </ControlTemplate.Triggers>
+                                </ControlTemplate>
+                            </Setter.Value>
+                        </Setter>
                     </Style>
                     <Style x:Key="CellText" TargetType="TextBlock">
                         <Setter Property="VerticalAlignment" Value="Center" />
                         <Setter Property="TextTrimming" Value="CharacterEllipsis" />
+                    </Style>
+                    <!-- Sizes, dates and types are there to be glanced at; the name is what you read -->
+                    <Style x:Key="DimText" TargetType="TextBlock" BasedOn="{StaticResource CellText}">
+                        <Setter Property="Foreground" Value="{DynamicResource FrostTextSecondaryBrush}" />
                     </Style>
                     <!-- The path behaves like a link: hand cursor + underline on hover, double-click to go there -->
                     <Style x:Key="LinkText" TargetType="TextBlock" BasedOn="{StaticResource CellText}">
@@ -292,8 +393,8 @@
                     <DataGridTemplateColumn Header="Name" Width="2.2*" SortMemberPath="Name" MinWidth="140">
                         <DataGridTemplateColumn.CellTemplate>
                             <DataTemplate>
-                                <StackPanel Orientation="Horizontal" Margin="4,0,0,0">
-                                    <Image Source="{Binding Icon}" Width="16" Height="16" Margin="0,0,8,0" VerticalAlignment="Center" />
+                                <StackPanel Orientation="Horizontal">
+                                    <Image Source="{Binding Icon}" Width="16" Height="16" Margin="0,0,9,0" VerticalAlignment="Center" />
                                     <ctl:HighlightTextBlock SourceText="{Binding Name}" Style="{StaticResource CellText}"
                                                             HighlightBrush="{DynamicResource AccentTextFillColorPrimaryBrush}"
                                                             Highlighter="{Binding DataContext.NameHighlighter, RelativeSource={RelativeSource AncestorType=UserControl}}" />
@@ -305,35 +406,42 @@
                         <DataGridTemplateColumn.CellTemplate>
                             <DataTemplate>
                                 <ctl:HighlightTextBlock SourceText="{Binding Directory}" Style="{StaticResource LinkText}" ToolTip="Double-click to open this folder"
-                                                        Foreground="{DynamicResource TextFillColorSecondaryBrush}"
+                                                        Foreground="{DynamicResource FrostTextSecondaryBrush}"
                                                         HighlightBrush="{DynamicResource AccentTextFillColorPrimaryBrush}"
                                                         Highlighter="{Binding DataContext.PathHighlighter, RelativeSource={RelativeSource AncestorType=UserControl}}" />
                             </DataTemplate>
                         </DataGridTemplateColumn.CellTemplate>
                     </DataGridTemplateColumn>
                     <DataGridTextColumn Header="Size" Binding="{Binding SizeText}" Width="90" SortMemberPath="Size">
+                        <DataGridTextColumn.HeaderStyle>
+                            <Style TargetType="DataGridColumnHeader" BasedOn="{StaticResource FileHeaderStyle}">
+                                <Setter Property="HorizontalContentAlignment" Value="Right" />
+                                <Setter Property="Padding" Value="8,0,18,0" />
+                            </Style>
+                        </DataGridTextColumn.HeaderStyle>
                         <DataGridTextColumn.ElementStyle>
                             <Style TargetType="TextBlock">
                                 <Setter Property="HorizontalAlignment" Value="Right" />
                                 <Setter Property="Margin" Value="0,0,10,0" />
                                 <Setter Property="VerticalAlignment" Value="Center" />
+                                <Setter Property="Foreground" Value="{DynamicResource FrostTextSecondaryBrush}" />
                             </Style>
                         </DataGridTextColumn.ElementStyle>
                     </DataGridTextColumn>
-                    <DataGridTextColumn Header="Date modified" Binding="{Binding Modified, Converter={StaticResource DateTimeConverter}}" Width="130" SortMemberPath="Modified" ElementStyle="{StaticResource CellText}" />
-                    <DataGridTextColumn x:Name="CreatedColumn" Header="Date created" Binding="{Binding Created, Converter={StaticResource DateTimeConverter}}" Width="130" SortMemberPath="Created" Visibility="Collapsed" ElementStyle="{StaticResource CellText}" />
-                    <DataGridTextColumn Header="Type" Binding="{Binding TypeText}" Width="70" SortMemberPath="Extension" ElementStyle="{StaticResource CellText}" />
-                    <DataGridTextColumn Header="Attributes" Binding="{Binding AttributesText}" Width="80" Visibility="Collapsed" ElementStyle="{StaticResource CellText}" CanUserSort="False" />
-                    <DataGridTextColumn x:Name="FullPathColumn" Header="Full path" Binding="{Binding FullPath}" Width="3*" SortMemberPath="Path" Visibility="Collapsed" ElementStyle="{StaticResource CellText}" />
+                    <DataGridTextColumn Header="Date modified" Binding="{Binding Modified, Converter={StaticResource DateTimeConverter}}" Width="130" SortMemberPath="Modified" ElementStyle="{StaticResource DimText}" />
+                    <DataGridTextColumn x:Name="CreatedColumn" Header="Date created" Binding="{Binding Created, Converter={StaticResource DateTimeConverter}}" Width="130" SortMemberPath="Created" Visibility="Collapsed" ElementStyle="{StaticResource DimText}" />
+                    <DataGridTextColumn Header="Type" Binding="{Binding TypeText}" Width="70" SortMemberPath="Extension" ElementStyle="{StaticResource DimText}" />
+                    <DataGridTextColumn Header="Attributes" Binding="{Binding AttributesText}" Width="80" Visibility="Collapsed" ElementStyle="{StaticResource DimText}" CanUserSort="False" />
+                    <DataGridTextColumn x:Name="FullPathColumn" Header="Full path" Binding="{Binding FullPath}" Width="3*" SortMemberPath="Path" Visibility="Collapsed" ElementStyle="{StaticResource DimText}" />
                 </DataGrid.Columns>
             </DataGrid>
 
             <!-- Empty state -->
             <StackPanel x:Name="EmptyState" VerticalAlignment="Center" HorizontalAlignment="Center" IsHitTestVisible="False" Visibility="Collapsed" MaxWidth="420">
                 <TextBlock x:Name="EmptyGlyph" FontFamily="{StaticResource IconFont}" Text="&#xE8B7;" FontSize="36" HorizontalAlignment="Center"
-                           Foreground="{DynamicResource TextFillColorTertiaryBrush}" />
+                           Foreground="{DynamicResource FrostTextTertiaryBrush}" />
                 <TextBlock Text="{Binding EmptyText}" FontSize="15" Margin="0,10,0,2" HorizontalAlignment="Center" TextAlignment="Center" TextWrapping="Wrap"
-                           Foreground="{DynamicResource TextFillColorSecondaryBrush}" />
+                           Foreground="{DynamicResource FrostTextSecondaryBrush}" />
             </StackPanel>
 
             <!-- Shown while files are dragged over the pane: where they will land and whether they are copied or moved -->
@@ -344,9 +452,9 @@
         </Grid>
 
         <!-- Pane status -->
-        <DockPanel Grid.Row="5" Margin="4,5,4,6">
+        <DockPanel Grid.Row="5" Margin="8,5,8,8">
             <TextBlock DockPanel.Dock="Right" Text="{Binding SelectionText}" FontSize="12" Foreground="{DynamicResource TextFillColorPrimaryBrush}" Margin="12,0,0,0" />
-            <TextBlock Text="{Binding StatusText}" FontSize="12" Foreground="{DynamicResource TextFillColorSecondaryBrush}" TextTrimming="CharacterEllipsis" />
+            <TextBlock Text="{Binding StatusText}" FontSize="12" Foreground="{DynamicResource FrostTextSecondaryBrush}" TextTrimming="CharacterEllipsis" />
         </DockPanel>
     </Grid>
 </UserControl>
