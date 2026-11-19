@@ -50,6 +50,12 @@ public sealed class Settings
     public bool UsageWindowMaximized { get; set; }
     public bool UsageShowNames { get; set; } = true;
 
+    /// <summary>The duplicate files window: its size, and the smallest file it compares (in bytes).</summary>
+    public double DuplicatesWindowWidth { get; set; } = 1100;
+    public double DuplicatesWindowHeight { get; set; } = 720;
+    public bool DuplicatesWindowMaximized { get; set; }
+    public long DuplicatesMinSize { get; set; } = 1024 * 1024;
+
     /// <summary>The user's own right-click entries, in the order they appear in the menu.</summary>
     public List<CustomAction> CustomActions { get; set; } = new();
 

@@ -552,6 +552,7 @@ public partial class UsageWindow : Window
         Add(folder ? "_Zoom the map to this folder" : "_Zoom the map to its folder", () => Map.ZoomTo(container),
             enabled: container >= 0 && container != Map.Root && tree.Size(container) > 0);
         Add("Zoom _out", ZoomOut, "Backspace", enabled: Map.Root != SizeTree.Root);
+        if (folder) Add("Find duplicate files _here", () => DuplicatesWindow.ShowFor(path));
         menu.Items.Add(new Separator());
         Add("Copy p_ath", () => ShellOps.CopyText(path), "Ctrl+C");
         if (node != SizeTree.Root)

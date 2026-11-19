@@ -1,0 +1,152 @@
+<Window x:Class="FastFind.App.Views.DuplicatesWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Duplicate files" Width="1100" Height="720" MinWidth="720" MinHeight="420" WindowStartupLocation="CenterScreen"
+        FontFamily="{StaticResource UiFont}" UseLayoutRounding="True" SnapsToDevicePixels="True"
+        TextOptions.TextFormattingMode="Display" TextOptions.TextRenderingMode="ClearType">
+    <Window.Resources>
+        <!-- The heading of each group stands out from the copies listed under it: a lighter strip, like a row under the mouse. -->
+        <Style x:Key="DuplicateRow" TargetType="DataGridRow" BasedOn="{StaticResource FrostRowStyle}">
+            <Style.Triggers>
+                <DataTrigger Binding="{Binding IsHeader}" Value="True">
+                    <Setter Property="Background" Value="{DynamicResource FrostHoverBrush}" />
+                </DataTrigger>
+            </Style.Triggers>
+        </Style>
+        <Style x:Key="CellText" TargetType="TextBlock">
+            <Setter Property="VerticalAlignment" Value="Center" />
+            <Setter Property="TextTrimming" Value="CharacterEllipsis" />
+        </Style>
+        <Style x:Key="NameText" TargetType="TextBlock" BasedOn="{StaticResource CellText}">
+            <Style.Triggers>
+                <DataTrigger Binding="{Binding IsHeader}" Value="True">
+                    <Setter Property="FontWeight" Value="SemiBold" />
+                </DataTrigger>
+            </Style.Triggers>
+        </Style>
+        <Style x:Key="DetailText" TargetType="TextBlock" BasedOn="{StaticResource CellText}">
+            <Style.Triggers>
+                <DataTrigger Binding="{Binding IsHeader}" Value="True">
+                    <Setter Property="Foreground" Value="{DynamicResource FrostTextSecondaryBrush}" />
+                </DataTrigger>
+            </Style.Triggers>
+        </Style>
+        <Style x:Key="DimText" TargetType="TextBlock" BasedOn="{StaticResource CellText}">
+            <Setter Property="Foreground" Value="{DynamicResource FrostTextSecondaryBrush}" />
+        </Style>
+    </Window.Resources>
+
+    <!-- Glass, like the main window: the desktop shows through, blurred, under this tint and the coloured light (see GlassChrome). -->
+    <Grid x:Name="RootGrid" Background="{DynamicResource FrostWindowTintBrush}">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+            <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
+        <ContentControl x:Name="Aurora" Grid.RowSpan="4" Style="{StaticResource AuroraLayer}" />
+
+        <!-- Header: where is being searched and what was found. It is also the title bar: drag the window by it. Windows
+             draws minimise, maximise and close at the right; CaptionSpacer keeps that corner clear. -->
+        <Grid Margin="16,12,0,10">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="Auto" />
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="Auto" />
+                <ColumnDefinition Width="Auto" />
+            </Grid.ColumnDefinitions>
+            <Border Width="40" Height="40" CornerRadius="10" Background="{DynamicResource FrostBrandBrush}" VerticalAlignment="Center">
+                <TextBlock FontFamily="{StaticResource IconFont}" Text="&#xE8C8;" FontSize="19" HorizontalAlignment="Center" VerticalAlignment="Center"
+                           Foreground="{DynamicResource TextOnAccentFillColorPrimaryBrush}" />
+            </Border>
+            <StackPanel Grid.Column="1" Margin="13,0,12,0" VerticalAlignment="Center">
+                <TextBlock x:Name="TitleText" FontSize="18" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" Foreground="{DynamicResource TextFillColorPrimaryBrush}" />
+                <TextBlock x:Name="SummaryText" FontSize="12" Margin="0,2,0,0" TextTrimming="CharacterEllipsis" Foreground="{DynamicResource FrostTextSecondaryBrush}" />
+            </StackPanel>
+            <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,12,0">
+                <TextBlock Text="Files of" FontSize="12" VerticalAlignment="Center" Margin="0,0,8,0" Foreground="{DynamicResource FrostTextSecondaryBrush}" />
+                <ComboBox x:Name="MinSizeBox" Width="150" VerticalAlignment="Center" SelectionChanged="OnMinSizeChanged" AutomationProperties.Name="Smallest file to compare"
+                          WindowChrome.IsHitTestVisibleInChrome="True"
+                          ToolTip="Smaller files are not compared. Large files are where the space is; comparing every small file on a drive takes a long time.">
+                    <ComboBoxItem Content="any size" Tag="1" />
+                    <ComboBoxItem Content="100 KB or more" Tag="102400" />
+                    <ComboBoxItem Content="1 MB or more" Tag="1048576" />
+                    <ComboBoxItem Content="10 MB or more" Tag="10485760" />
+                    <ComboBoxItem Content="100 MB or more" Tag="104857600" />
+                </ComboBox>
+                <Button x:Name="RefreshButton" Style="{StaticResource IconButton}" Content="&#xE72C;" Margin="8,0,0,0" Click="OnRefreshClick"
+                        WindowChrome.IsHitTestVisibleInChrome="True" ToolTip="Search again (F5)" AutomationProperties.Name="Search again" />
+            </StackPanel>
+            <Border x:Name="CaptionSpacer" Grid.Column="3" Width="150" />
+        </Grid>
+
+        <!-- Ticking many at once -->
+        <StackPanel x:Name="TickBar" Grid.Row="1" Orientation="Horizontal" Margin="16,0,12,10" IsEnabled="False">
+            <TextBlock Text="Tick for deletion:" FontSize="12" VerticalAlignment="Center" Margin="0,0,10,0" Foreground="{DynamicResource FrostTextSecondaryBrush}" />
+            <Button Content="All but the newest" Padding="12,5" FontSize="12" Click="OnKeepNewestClick"
+                    ToolTip="In every group, keep the copy changed most recently and tick the rest" />
+            <Button Content="All but the oldest" Padding="12,5" FontSize="12" Margin="6,0,0,0" Click="OnKeepOldestClick"
+                    ToolTip="In every group, keep the copy that has been there longest and tick the rest" />
+            <Button Content="Clear ticks" Padding="12,5" FontSize="12" Margin="6,0,0,0" Click="OnClearTicksClick" />
+            <TextBlock Text="One copy of every file is always kept." FontSize="12" VerticalAlignment="Center" Margin="14,0,0,0" Foreground="{DynamicResource FrostTextSecondaryBrush}" />
+        </StackPanel>
+
+        <!-- The groups, the one wasting the most space first, on a pane of smoked glass -->
+        <Border Grid.Row="2" Margin="8,0,8,0" CornerRadius="12" BorderThickness="1" Background="{DynamicResource FrostPaneBrush}" BorderBrush="{DynamicResource FrostCardStrokeBrush}" />
+        <Grid Grid.Row="2" Margin="16,6,16,8">
+            <DataGrid x:Name="List" AutomationProperties.Name="Duplicate files" AutoGenerateColumns="False" IsReadOnly="True" CanUserAddRows="False"
+                      CanUserDeleteRows="False" CanUserReorderColumns="False" CanUserSortColumns="False" HeadersVisibility="Column" GridLinesVisibility="None"
+                      RowHeight="29" SelectionMode="Extended" SelectionUnit="FullRow" Background="Transparent" BorderThickness="0" FontSize="13"
+                      RowStyle="{StaticResource DuplicateRow}" CellStyle="{StaticResource FrostCellStyle}" ColumnHeaderStyle="{StaticResource FrostHeaderStyle}"
+                      EnableRowVirtualization="True"
+                      VirtualizingPanel.IsVirtualizing="True" VirtualizingPanel.VirtualizationMode="Recycling" ScrollViewer.CanContentScroll="True"
+                      PreviewKeyDown="OnListKeyDown" MouseDoubleClick="OnListDoubleClick" ContextMenuOpening="OnListContextMenuOpening">
+                <DataGrid.ContextMenu>
+                    <ContextMenu x:Name="ListMenu" />
+                </DataGrid.ContextMenu>
+                <DataGrid.Columns>
+                    <DataGridTemplateColumn Width="42" CanUserResize="False">
+                        <DataGridTemplateColumn.CellTemplate>
+                            <DataTemplate>
+                                <CheckBox IsChecked="{Binding IsTicked, Mode=OneWay}" Click="OnTickClick" HorizontalAlignment="Center" VerticalAlignment="Center" MinWidth="0" Padding="0"
+                                          Focusable="False" Visibility="{Binding IsFile, Converter={StaticResource BoolToVisibility}}"
+                                          AutomationProperties.Name="Delete this copy" ToolTip="Tick to delete this copy" />
+                            </DataTemplate>
+                        </DataGridTemplateColumn.CellTemplate>
+                    </DataGridTemplateColumn>
+                    <DataGridTemplateColumn Header="Name" Width="2*" MinWidth="180">
+                        <DataGridTemplateColumn.CellTemplate>
+                            <DataTemplate>
+                                <StackPanel Orientation="Horizontal">
+                                    <Image Source="{Binding Icon}" Width="16" Height="16" Margin="0,0,9,0" VerticalAlignment="Center" />
+                                    <TextBlock Text="{Binding Name}" Style="{StaticResource NameText}" />
+                                </StackPanel>
+                            </DataTemplate>
+                        </DataGridTemplateColumn.CellTemplate>
+                    </DataGridTemplateColumn>
+                    <DataGridTextColumn Header="Folder" Binding="{Binding Detail}" Width="3*" MinWidth="200" ElementStyle="{StaticResource DetailText}" />
+                    <DataGridTextColumn Header="Date modified" Binding="{Binding Modified, Converter={StaticResource DateTimeConverter}}" Width="130" ElementStyle="{StaticResource DimText}" />
+                </DataGrid.Columns>
+            </DataGrid>
+
+            <!-- Shown while searching, and afterwards when there is nothing to list -->
+            <StackPanel x:Name="LoadingPanel" VerticalAlignment="Center" HorizontalAlignment="Center" Width="420">
+                <TextBlock x:Name="LoadingText" FontSize="14" HorizontalAlignment="Center" TextAlignment="Center" TextWrapping="Wrap" Foreground="{DynamicResource TextFillColorPrimaryBrush}" />
+                <TextBlock x:Name="LoadingDetail" FontSize="12" Margin="0,6,0,0" HorizontalAlignment="Center" TextAlignment="Center" TextWrapping="Wrap"
+                           Foreground="{DynamicResource FrostTextSecondaryBrush}" />
+                <ProgressBar x:Name="LoadingBar" Height="4" Margin="0,12,0,0" IsIndeterminate="True" Minimum="0" Maximum="1" />
+                <Button x:Name="StopButton" Content="Stop" Padding="18,5" Margin="0,14,0,0" HorizontalAlignment="Center" Click="OnStopClick" />
+            </StackPanel>
+        </Grid>
+
+        <!-- Status, and the one button that deletes -->
+        <Border Grid.Row="3" Padding="18,8,12,10">
+            <DockPanel>
+                <Button x:Name="DeleteButton" DockPanel.Dock="Right" Content="Move ticked to Recycle Bin" Padding="14,6" FontSize="12" IsEnabled="False" Click="OnDeleteClick"
+                        Style="{DynamicResource AccentButtonStyle}" />
+                <TextBlock x:Name="TickedText" DockPanel.Dock="Right" FontSize="12" VerticalAlignment="Center" Margin="16,0,12,0" Foreground="{DynamicResource TextFillColorPrimaryBrush}" />
+                <TextBlock x:Name="StatusText" FontSize="12" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" Foreground="{DynamicResource FrostTextSecondaryBrush}" />
+            </DockPanel>
+        </Border>
+    </Grid>
+</Window>

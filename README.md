@@ -23,8 +23,9 @@ A tab is a **location plus a query**:
   Windows (or whichever you pick in Settings). Pools of coloured light glow behind the panes, in your Windows accent
   colour and three companions worked out from it. With two panes showing, the edge of the one you are working in
   lights up in the accent colour. The title bar holds the **jump box** (Ctrl+P) and the buttons for the sidebar, the
-  second pane, the preview pane, settings and help. This needs Windows 11 22H2 or later; on older Windows, or with a
-  high-contrast theme, the window is drawn plainly and keeps the ordinary title bar.
+  second pane, the preview pane, settings and help. The disk usage and duplicate files windows have the same look,
+  and right-click menus are glass as well, blurring whatever is behind them. This needs Windows 11 22H2 or later; on
+  older Windows, or with a high-contrast theme, windows are drawn plainly and keep the ordinary title bar.
 * **Address bar** with clickable breadcrumbs; Ctrl+L to type a path (`%TEMP%` and `~` work).
   **Back / forward / up** with Alt+arrows, Backspace or the extra mouse buttons.
 * **Copy and move** with the same engine, progress and conflict dialogs as Explorer: F5 / F6 to the other pane,
@@ -92,6 +93,21 @@ A tab is a **location plus a query**:
     Program Files or ProgramData, never your profile, Documents, Downloads or anything above them, never through a
     link, and only files that were measured and shown (anything that arrived since is left, as is anything in use).
     Clean-ups delete for good rather than to the Recycle Bin, and each one is written to `fastfind.log`.
+* **Duplicate files** (Ctrl+Shift+D, or right-click a folder or a drive): files with identical content, grouped, with
+  the group wasting the most space at the top.
+  * Two files can only be the same if they are the same size, and the index already knows every size, so nearly
+    everything is ruled out without touching the disk. The files left are compared by content: a sample from each end
+    first, then a full SHA-256 of those that still match. Nothing is called a duplicate because of its name or date.
+  * Tick the copies that can go, one at a time (Space, or the tick box) or all at once: **All but the newest**,
+    **All but the oldest**, or right-click a copy for **Keep only this copy** and **Tick every copy in this folder**.
+    **One copy of every file is always kept**: the last unticked copy in a group cannot be ticked.
+  * **Move ticked to Recycle Bin** checks each file again first. A file that has changed since it was compared is
+    left alone, and so is a whole group if the copy being kept has changed. What went is written to `fastfind.log`.
+  * Left out, and counted at the bottom of the window: Windows, Program Files and ProgramData (full of identical
+    files that are meant to be there), the Recycle Bin, online-only OneDrive files (comparing them would download
+    them), symbolic links, and second names of the same file (hard links), which take no extra space.
+  * The size box sets the smallest file compared (1 MB to begin with): large files are where the space is, and
+    comparing every small file on a drive takes a long time. A folder the index does not cover is read from disk.
 * **Jump to any folder** (Ctrl+P): type a few letters of a folder's name from anywhere on any indexed drive.
 * **Flat view of a subtree** in milliseconds, with every filter and sort available.
 * **Everything-compatible query language**: `space` = AND, `|` = OR, `!` = NOT, quotes, `*`/`?` wildcards, and
@@ -186,12 +202,15 @@ dotnet test
   name order, folder sizes, live folder listing, path handling, the MFT record parser (synthetic records), the pipe
   protocol end to end (a real named pipe with a fake index behind it), the scheduled-task definition, and the disk
   usage tree (totals, ordering, removal, file kinds, reading from the index, through the pipe and from disk), and the
-  usage analysis on a made-up machine (applications gathered across folders, what is and is not offered for clean-up).
+  usage analysis on a made-up machine (applications gathered across folders, what is and is not offered for clean-up),
+  and the duplicate finder run for real on a temporary folder (files that differ only in the middle, hard links,
+  locked files, what the index and the disk offer for comparing, and the check made again before deleting).
 * `FastFind.App.Tests`: tab behaviour on a real temporary folder (listing, filtering, history, subfolders, live
   refresh, folder sizes), zip round trip, export, name validation, the disk usage map's layout and shading (every
   pixel accounted for, areas in proportion, blocks nested in their folders), the rows of its tree, thumbnail
   orientation, and clean-ups run for real against a made-up machine in a temporary folder (files in use, new files,
-  files that arrived after measuring, links and protected folders are all left alone).
+  files that arrived after measuring, links and protected folders are all left alone), and the ticking rules of the
+  duplicates list (the last copy in a group can never be ticked).
 
 ## Project layout
 
@@ -202,6 +221,7 @@ dotnet test
 | `src/FastFind.Core/Search` | Query model, parser, size/date parsing, parallel search engine |
 | `src/FastFind.Core/Browse` | Live folder listing and path helpers |
 | `src/FastFind.Core/Usage` | Disk usage: the size tree, its loaders (index or disk) and the file kinds |
+| `src/FastFind.Core/Duplicates` | Duplicate files: which files are worth comparing (index or disk), the comparison, and the check before deleting |
 | `src/FastFind.Core/Api` | `IIndexService`, the in-process implementation, the named-pipe server and client, the service installer |
 | `src/FastFind.Service` | The elevated index host |
 | `src/FastFind.App` | WPF UI (Fluent theme): panes, tabs, sidebar, preview, file operations, shell integration |
