@@ -150,7 +150,6 @@ public partial class MainWindow : Window
         base.OnSourceInitialized(e);
         var source = (HwndSource?)PresentationSource.FromVisual(this);
         source?.AddHook(WndProc);
-        ApplyChrome();
 
         var hwnd = new WindowInteropHelper(this).Handle;
         _hotkey = new GlobalHotkey(hwnd);

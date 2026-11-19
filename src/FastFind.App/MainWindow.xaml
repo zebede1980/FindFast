@@ -15,14 +15,9 @@
             <RowDefinition Height="Auto" />
         </Grid.RowDefinitions>
 
-        <!-- Coloured light behind the glass: four soft pools, in the accent colour and its companions (see FrostTheme).
-             They sit under everything else, so the panes and the sidebar pick the colour up through their own tint. -->
-        <Grid x:Name="Aurora" Grid.RowSpan="3" IsHitTestVisible="False">
-            <Rectangle Fill="{DynamicResource FrostGlowABrush}" />
-            <Rectangle Fill="{DynamicResource FrostGlowBBrush}" />
-            <Rectangle Fill="{DynamicResource FrostGlowCBrush}" />
-            <Rectangle Fill="{DynamicResource FrostGlowDBrush}" />
-        </Grid>
+        <!-- Coloured light behind the glass. It sits under everything else, so the panes and the sidebar pick the colour
+             up through their own tint. -->
+        <ContentControl x:Name="Aurora" Grid.RowSpan="3" Style="{StaticResource AuroraLayer}" />
 
         <!-- Title bar: drawn by us so it can hold the jump box and the window's own buttons. Windows still draws minimise,
              maximise and close at the right; CaptionSpacer keeps that corner clear. -->

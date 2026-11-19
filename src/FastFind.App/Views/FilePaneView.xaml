@@ -264,7 +264,7 @@
                       VirtualizingPanel.IsVirtualizing="True" VirtualizingPanel.VirtualizationMode="Recycling"
                       ScrollViewer.CanContentScroll="True" ScrollViewer.IsDeferredScrollingEnabled="False"
                       Background="Transparent" BorderThickness="0" FontSize="13" AllowDrop="True"
-                      RowStyle="{DynamicResource FileRowStyle}" CellStyle="{DynamicResource FileCellStyle}" ColumnHeaderStyle="{DynamicResource FileHeaderStyle}"
+                      RowStyle="{DynamicResource FileRowStyle}" CellStyle="{StaticResource FrostCellStyle}" ColumnHeaderStyle="{StaticResource FrostHeaderStyle}"
                       Sorting="OnSorting" MouseDoubleClick="OnRowDoubleClick" PreviewMouseLeftButtonDown="OnGridPreviewMouseLeftButtonDown"
                       PreviewMouseLeftButtonUp="OnGridPreviewMouseLeftButtonUp" PreviewMouseRightButtonDown="OnGridPreviewMouseRightButtonDown"
                       MouseMove="OnGridMouseMove" PreviewKeyDown="OnGridPreviewKeyDown" PreviewMouseDown="OnGridPreviewMouseDown"
@@ -274,102 +274,9 @@
                     <ContextMenu x:Name="RowMenu" />
                 </DataGrid.ContextMenu>
                 <DataGrid.Resources>
-                    <!-- A row is one rounded strip: the highlight under the mouse and the selection are painted on the row, not on
-                         its cells. Selection is a tint of the accent colour rather than the theme's solid accent, so the text
-                         keeps its normal colour and stays easy to read. The 1px gap keeps neighbouring selected rows apart. -->
-                    <Style x:Key="FileRowStyle" TargetType="DataGridRow">
+                    <!-- Rows, cells and headings use the app-wide glass list styles (App.xaml); a hidden or system file is drawn fainter. -->
+                    <Style x:Key="FileRowStyle" TargetType="DataGridRow" BasedOn="{StaticResource FrostRowStyle}">
                         <Setter Property="Opacity" Value="{Binding IsHidden, Converter={StaticResource HiddenOpacity}}" />
-                        <Setter Property="Background" Value="Transparent" />
-                        <Setter Property="Foreground" Value="{DynamicResource TextFillColorPrimaryBrush}" />
-                        <Setter Property="SnapsToDevicePixels" Value="True" />
-                        <Setter Property="Template">
-                            <Setter.Value>
-                                <ControlTemplate TargetType="DataGridRow">
-                                    <Border x:Name="Bd" CornerRadius="6" Margin="0,0,0,1" Background="{TemplateBinding Background}">
-                                        <Grid>
-                                            <!-- A selected row also carries a bright bar at its left end, so a selection is easy to pick out at a glance -->
-                                            <Border x:Name="Bar" Width="3" CornerRadius="1.5" HorizontalAlignment="Left" Margin="0,6" Visibility="Collapsed"
-                                                    Background="{DynamicResource FrostActiveStrokeBrush}" />
-                                            <DataGridCellsPresenter ItemsPanel="{TemplateBinding ItemsPanel}" SnapsToDevicePixels="{TemplateBinding SnapsToDevicePixels}" />
-                                        </Grid>
-                                    </Border>
-                                    <ControlTemplate.Triggers>
-                                        <Trigger Property="IsMouseOver" Value="True">
-                                            <Setter TargetName="Bd" Property="Background" Value="{DynamicResource FrostHoverBrush}" />
-                                        </Trigger>
-                                        <Trigger Property="IsSelected" Value="True">
-                                            <Setter TargetName="Bd" Property="Background" Value="{DynamicResource RowSelectedBrush}" />
-                                            <Setter TargetName="Bar" Property="Visibility" Value="Visible" />
-                                        </Trigger>
-                                    </ControlTemplate.Triggers>
-                                </ControlTemplate>
-                            </Setter.Value>
-                        </Setter>
-                    </Style>
-                    <Style x:Key="FileCellStyle" TargetType="DataGridCell">
-                        <Setter Property="Background" Value="Transparent" />
-                        <Setter Property="BorderThickness" Value="0" />
-                        <Setter Property="Padding" Value="8,0" />
-                        <Setter Property="Foreground" Value="{DynamicResource TextFillColorPrimaryBrush}" />
-                        <Setter Property="FocusVisualStyle" Value="{x:Null}" />
-                        <Setter Property="Template">
-                            <Setter.Value>
-                                <ControlTemplate TargetType="DataGridCell">
-                                    <Border Background="Transparent" Padding="{TemplateBinding Padding}">
-                                        <ContentPresenter VerticalAlignment="Center" />
-                                    </Border>
-                                </ControlTemplate>
-                            </Setter.Value>
-                        </Setter>
-                    </Style>
-                    <!-- Column headings sit quietly on the glass: small text, a highlight under the mouse, an arrow on the sorted column -->
-                    <Style x:Key="HeaderGrip" TargetType="Thumb">
-                        <Setter Property="Width" Value="8" />
-                        <Setter Property="Cursor" Value="SizeWE" />
-                        <Setter Property="Template">
-                            <Setter.Value>
-                                <ControlTemplate TargetType="Thumb">
-                                    <Border Background="Transparent" />
-                                </ControlTemplate>
-                            </Setter.Value>
-                        </Setter>
-                    </Style>
-                    <Style x:Key="FileHeaderStyle" TargetType="DataGridColumnHeader">
-                        <Setter Property="Background" Value="Transparent" />
-                        <Setter Property="Foreground" Value="{DynamicResource FrostTextSecondaryBrush}" />
-                        <Setter Property="FontSize" Value="11.5" />
-                        <Setter Property="Height" Value="28" />
-                        <Setter Property="Padding" Value="8,0" />
-                        <Setter Property="HorizontalContentAlignment" Value="Left" />
-                        <Setter Property="Template">
-                            <Setter.Value>
-                                <ControlTemplate TargetType="DataGridColumnHeader">
-                                    <Grid Background="Transparent">
-                                        <Border x:Name="Bd" CornerRadius="5" Margin="0,2,0,3" Padding="{TemplateBinding Padding}" Background="Transparent">
-                                            <StackPanel Orientation="Horizontal" HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}" VerticalAlignment="Center">
-                                                <ContentPresenter RecognizesAccessKey="False" />
-                                                <TextBlock x:Name="Sort" FontFamily="{StaticResource IconFont}" Text="&#xE70E;" FontSize="8" Margin="6,1,0,0" VerticalAlignment="Center" Visibility="Collapsed" />
-                                            </StackPanel>
-                                        </Border>
-                                        <Thumb x:Name="PART_LeftHeaderGripper" HorizontalAlignment="Left" Style="{StaticResource HeaderGrip}" />
-                                        <Thumb x:Name="PART_RightHeaderGripper" HorizontalAlignment="Right" Style="{StaticResource HeaderGrip}" />
-                                    </Grid>
-                                    <ControlTemplate.Triggers>
-                                        <Trigger Property="IsMouseOver" Value="True">
-                                            <Setter TargetName="Bd" Property="Background" Value="{DynamicResource FrostHoverBrush}" />
-                                            <Setter Property="Foreground" Value="{DynamicResource TextFillColorPrimaryBrush}" />
-                                        </Trigger>
-                                        <Trigger Property="SortDirection" Value="Ascending">
-                                            <Setter TargetName="Sort" Property="Visibility" Value="Visible" />
-                                        </Trigger>
-                                        <Trigger Property="SortDirection" Value="Descending">
-                                            <Setter TargetName="Sort" Property="Visibility" Value="Visible" />
-                                            <Setter TargetName="Sort" Property="Text" Value="&#xE70D;" />
-                                        </Trigger>
-                                    </ControlTemplate.Triggers>
-                                </ControlTemplate>
-                            </Setter.Value>
-                        </Setter>
                     </Style>
                     <Style x:Key="CellText" TargetType="TextBlock">
                         <Setter Property="VerticalAlignment" Value="Center" />
@@ -414,7 +321,7 @@
                     </DataGridTemplateColumn>
                     <DataGridTextColumn Header="Size" Binding="{Binding SizeText}" Width="90" SortMemberPath="Size">
                         <DataGridTextColumn.HeaderStyle>
-                            <Style TargetType="DataGridColumnHeader" BasedOn="{StaticResource FileHeaderStyle}">
+                            <Style TargetType="DataGridColumnHeader" BasedOn="{StaticResource FrostHeaderStyle}">
                                 <Setter Property="HorizontalContentAlignment" Value="Right" />
                                 <Setter Property="Padding" Value="8,0,18,0" />
                             </Style>

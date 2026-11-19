@@ -71,6 +71,7 @@ public partial class App : Application
             }
         }
         ApplyTheme(Settings.Theme);
+        GlassMenu.Register();
 
         DispatcherUnhandledException += OnDispatcherUnhandledException;
         AppDomain.CurrentDomain.UnhandledException += (_, args) => Logger.Error($"Unhandled: {args.ExceptionObject}");
@@ -228,9 +229,8 @@ public partial class App : Application
         // The glass tints (panes, boxes, the selected row) depend on the theme and on the Windows accent colour.
         try { FrostTheme.Apply(Current.Resources, theme); }
         catch (Exception ex) { Logger.Warn($"Theme colours unavailable: {ex.Message}"); }
-        // Changing the theme makes WPF put its own backdrop back on the window; ask for the glass one again afterwards.
-        if (Current.MainWindow is MainWindow window)
-            window.Dispatcher.BeginInvoke(DispatcherPriority.ApplicationIdle, window.ApplyChrome);
+        // Changing the theme makes WPF put its own backdrop back on every window; ask for the glass one again afterwards.
+        Current.Dispatcher.BeginInvoke(DispatcherPriority.ApplicationIdle, GlassChrome.ApplyAll);
     }
 
     private void OnDispatcherUnhandledException(object sender, DispatcherUnhandledExceptionEventArgs e)

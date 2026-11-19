@@ -78,6 +78,11 @@ public static class FrostTheme
             // which was chosen for a flat dark background rather than coloured glass.
             Set("FrostTextSecondaryBrush", Colors.White, 0xE0);
             Set("FrostTextTertiaryBrush", Colors.White, 0xA6);
+            // Right-click menus (see GlassMenu): the tint over the blur behind a menu, the faint sheen the menu adds
+            // on top of that, and the solid colour it uses instead when there is no blur to sit on.
+            resources["FrostMenuTintColor"] = Color.FromArgb(0xA6, 0x0C, 0x0E, 0x1C);
+            resources["FrostMenuBrush"] = Fade(Colors.White, 0x1A, Colors.White, 0x08, new Point(0, 0), new Point(0, 1));
+            Set("FrostMenuSolidBrush", Color.FromRgb(0x1A, 0x1C, 0x2A), 0xFF);
             resources["RowSelectedBrush"] = Fade(accent, 0x85, accent, 0x38, new Point(0, 0), new Point(1, 0));
             Set("FrostActiveStrokeBrush", accent, 0xF2);
         }
@@ -88,6 +93,9 @@ public static class FrostTheme
             resources["FrostPaneBrush"] = Fade(Colors.White, 0xC7, Colors.White, 0xA6, new Point(0, 0), new Point(0, 1));
             Set("FrostTextSecondaryBrush", ink, 0xD1);
             Set("FrostTextTertiaryBrush", ink, 0x99);
+            resources["FrostMenuTintColor"] = Color.FromArgb(0xB8, 0xF6, 0xF7, 0xFB);
+            resources["FrostMenuBrush"] = Fade(Colors.White, 0x66, Colors.White, 0x33, new Point(0, 0), new Point(0, 1));
+            Set("FrostMenuSolidBrush", Color.FromRgb(0xF6, 0xF7, 0xFB), 0xFF);
             resources["FrostCardBrush"] = Fade(Colors.White, 0xB8, Colors.White, 0x94, new Point(0, 0), new Point(0, 1));
             resources["FrostCardStrokeBrush"] = Fade(Colors.White, 0xFF, Colors.White, 0xCC, new Point(0, 0), new Point(0, 1), middle: 0.35);
             Set("FrostFieldBrush", Colors.White, 0xB3);
@@ -115,6 +123,9 @@ public static class FrostTheme
         Set("FrostPaneBrush", SystemColors.WindowColor, 0x00);
         Set("FrostTextSecondaryBrush", text, 0xFF);
         Set("FrostTextTertiaryBrush", text, 0xFF);
+        resources["FrostMenuTintColor"] = SystemColors.WindowColor;
+        Set("FrostMenuBrush", SystemColors.WindowColor, 0xFF);
+        Set("FrostMenuSolidBrush", SystemColors.WindowColor, 0xFF);
         Set("FrostCardStrokeBrush", text, 0xFF);
         Set("FrostFieldBrush", SystemColors.WindowColor, 0xFF);
         Set("FrostFieldStrokeBrush", text, 0xFF);

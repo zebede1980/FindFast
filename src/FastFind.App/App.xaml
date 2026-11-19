@@ -27,6 +27,9 @@
             <SolidColorBrush x:Key="FrostGlowCBrush" Color="Transparent" />
             <SolidColorBrush x:Key="FrostGlowDBrush" Color="Transparent" />
             <SolidColorBrush x:Key="FrostBrandBrush" Color="#FF60CDFF" />
+            <SolidColorBrush x:Key="FrostMenuBrush" Color="#14FFFFFF" />
+            <SolidColorBrush x:Key="FrostMenuSolidBrush" Color="#FF1A1C2A" />
+            <Color x:Key="FrostMenuTintColor">#A60C0E1C</Color>
             <Color x:Key="FrostAccentColor">#FF60CDFF</Color>
             <SolidColorBrush x:Key="FrostPaneBrush" Color="#73080A18" />
             <SolidColorBrush x:Key="FrostTextSecondaryBrush" Color="#E0FFFFFF" />
@@ -308,6 +311,150 @@
                                 <!-- The part name matters: without it the tab's content is invisible to screen readers and UI automation -->
                                 <ContentPresenter x:Name="PART_SelectedContentHost" Grid.Row="1" ContentSource="SelectedContent" />
                             </Grid>
+                        </ControlTemplate>
+                    </Setter.Value>
+                </Setter>
+            </Style>
+
+            <!-- Coloured light behind the glass: four soft pools, in the accent colour and its companions (see FrostTheme).
+                 A glass window puts one of these under everything else, so its panes pick the colour up through their own tint. -->
+            <Style x:Key="AuroraLayer" TargetType="ContentControl">
+                <Setter Property="IsHitTestVisible" Value="False" />
+                <Setter Property="Focusable" Value="False" />
+                <Setter Property="Template">
+                    <Setter.Value>
+                        <ControlTemplate TargetType="ContentControl">
+                            <Grid>
+                                <Rectangle Fill="{DynamicResource FrostGlowABrush}" />
+                                <Rectangle Fill="{DynamicResource FrostGlowBBrush}" />
+                                <Rectangle Fill="{DynamicResource FrostGlowCBrush}" />
+                                <Rectangle Fill="{DynamicResource FrostGlowDBrush}" />
+                            </Grid>
+                        </ControlTemplate>
+                    </Setter.Value>
+                </Setter>
+            </Style>
+
+            <!-- Lists on glass (the file panes, disk usage, duplicates). A grid takes these by key (RowStyle="..." and so on):
+                 the Fluent theme sets those properties on every DataGrid itself, so implicit styles would be ignored.
+                 A row is one rounded strip: the highlight under the mouse and the selection are painted on the row, not on
+                 its cells. Selection is a tint of the accent colour rather than the theme's solid accent, so the text
+                 keeps its normal colour and stays easy to read. The 1px gap keeps neighbouring selected rows apart. -->
+            <Style x:Key="FrostRowStyle" TargetType="DataGridRow">
+                <Setter Property="Background" Value="Transparent" />
+                <Setter Property="Foreground" Value="{DynamicResource TextFillColorPrimaryBrush}" />
+                <Setter Property="SnapsToDevicePixels" Value="True" />
+                <Setter Property="Template">
+                    <Setter.Value>
+                        <ControlTemplate TargetType="DataGridRow">
+                            <Border x:Name="Bd" CornerRadius="6" Margin="0,0,0,1" Background="{TemplateBinding Background}">
+                                <Grid>
+                                    <!-- A selected row also carries a bright bar at its left end, so a selection is easy to pick out at a glance -->
+                                    <Border x:Name="Bar" Width="3" CornerRadius="1.5" HorizontalAlignment="Left" Margin="0,6" Visibility="Collapsed"
+                                            Background="{DynamicResource FrostActiveStrokeBrush}" />
+                                    <DataGridCellsPresenter ItemsPanel="{TemplateBinding ItemsPanel}" SnapsToDevicePixels="{TemplateBinding SnapsToDevicePixels}" />
+                                </Grid>
+                            </Border>
+                            <ControlTemplate.Triggers>
+                                <Trigger Property="IsMouseOver" Value="True">
+                                    <Setter TargetName="Bd" Property="Background" Value="{DynamicResource FrostHoverBrush}" />
+                                </Trigger>
+                                <Trigger Property="IsSelected" Value="True">
+                                    <Setter TargetName="Bd" Property="Background" Value="{DynamicResource RowSelectedBrush}" />
+                                    <Setter TargetName="Bar" Property="Visibility" Value="Visible" />
+                                </Trigger>
+                            </ControlTemplate.Triggers>
+                        </ControlTemplate>
+                    </Setter.Value>
+                </Setter>
+            </Style>
+            <Style x:Key="FrostCellStyle" TargetType="DataGridCell">
+                <Setter Property="Background" Value="Transparent" />
+                <Setter Property="BorderThickness" Value="0" />
+                <Setter Property="Padding" Value="8,0" />
+                <Setter Property="Foreground" Value="{DynamicResource TextFillColorPrimaryBrush}" />
+                <Setter Property="FocusVisualStyle" Value="{x:Null}" />
+                <Setter Property="Template">
+                    <Setter.Value>
+                        <ControlTemplate TargetType="DataGridCell">
+                            <Border Background="Transparent" Padding="{TemplateBinding Padding}">
+                                <ContentPresenter VerticalAlignment="Center" />
+                            </Border>
+                        </ControlTemplate>
+                    </Setter.Value>
+                </Setter>
+            </Style>
+            <!-- Column headings sit quietly on the glass: small text, a highlight under the mouse, an arrow on the sorted column -->
+            <Style x:Key="FrostHeaderGrip" TargetType="Thumb">
+                <Setter Property="Width" Value="8" />
+                <Setter Property="Cursor" Value="SizeWE" />
+                <Setter Property="Template">
+                    <Setter.Value>
+                        <ControlTemplate TargetType="Thumb">
+                            <Border Background="Transparent" />
+                        </ControlTemplate>
+                    </Setter.Value>
+                </Setter>
+            </Style>
+            <Style x:Key="FrostHeaderStyle" TargetType="DataGridColumnHeader">
+                <Setter Property="Background" Value="Transparent" />
+                <Setter Property="Foreground" Value="{DynamicResource FrostTextSecondaryBrush}" />
+                <Setter Property="FontSize" Value="11.5" />
+                <Setter Property="Height" Value="28" />
+                <Setter Property="Padding" Value="8,0" />
+                <Setter Property="HorizontalContentAlignment" Value="Left" />
+                <Setter Property="Template">
+                    <Setter.Value>
+                        <ControlTemplate TargetType="DataGridColumnHeader">
+                            <Grid Background="Transparent">
+                                <Border x:Name="Bd" CornerRadius="5" Margin="0,2,0,3" Padding="{TemplateBinding Padding}" Background="Transparent">
+                                    <StackPanel Orientation="Horizontal" HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}" VerticalAlignment="Center">
+                                        <ContentPresenter RecognizesAccessKey="False" />
+                                        <TextBlock x:Name="Sort" FontFamily="{StaticResource IconFont}" Text="&#xE70E;" FontSize="8" Margin="6,1,0,0" VerticalAlignment="Center" Visibility="Collapsed" />
+                                    </StackPanel>
+                                </Border>
+                                <Thumb x:Name="PART_LeftHeaderGripper" HorizontalAlignment="Left" Style="{StaticResource FrostHeaderGrip}" />
+                                <Thumb x:Name="PART_RightHeaderGripper" HorizontalAlignment="Right" Style="{StaticResource FrostHeaderGrip}" />
+                            </Grid>
+                            <ControlTemplate.Triggers>
+                                <Trigger Property="IsMouseOver" Value="True">
+                                    <Setter TargetName="Bd" Property="Background" Value="{DynamicResource FrostHoverBrush}" />
+                                    <Setter Property="Foreground" Value="{DynamicResource TextFillColorPrimaryBrush}" />
+                                </Trigger>
+                                <Trigger Property="SortDirection" Value="Ascending">
+                                    <Setter TargetName="Sort" Property="Visibility" Value="Visible" />
+                                </Trigger>
+                                <Trigger Property="SortDirection" Value="Descending">
+                                    <Setter TargetName="Sort" Property="Visibility" Value="Visible" />
+                                    <Setter TargetName="Sort" Property="Text" Value="&#xE70D;" />
+                                </Trigger>
+                            </ControlTemplate.Triggers>
+                        </ControlTemplate>
+                    </Setter.Value>
+                </Setter>
+            </Style>
+
+            <!-- Right-click menus, everywhere in the app: a rounded sheet of glass. GlassMenu asks Windows to blur what is
+                 behind each one as it opens; the background here is only the faint sheen that sits on top of that blur. -->
+            <Style TargetType="ContextMenu">
+                <Setter Property="Background" Value="{DynamicResource FrostMenuBrush}" />
+                <Setter Property="BorderBrush" Value="{DynamicResource FrostCardStrokeBrush}" />
+                <Setter Property="Foreground" Value="{DynamicResource TextFillColorPrimaryBrush}" />
+                <Setter Property="FontFamily" Value="{StaticResource UiFont}" />
+                <Setter Property="FontSize" Value="13" />
+                <Setter Property="HasDropShadow" Value="False" />
+                <Setter Property="Grid.IsSharedSizeScope" Value="True" />
+                <Setter Property="SnapsToDevicePixels" Value="True" />
+                <Setter Property="UseLayoutRounding" Value="True" />
+                <Setter Property="TextOptions.TextFormattingMode" Value="Display" />
+                <Setter Property="Template">
+                    <Setter.Value>
+                        <ControlTemplate TargetType="ContextMenu">
+                            <Border Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="1" CornerRadius="8" Padding="4">
+                                <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" Focusable="False">
+                                    <ItemsPresenter KeyboardNavigation.DirectionalNavigation="Cycle" />
+                                </ScrollViewer>
+                            </Border>
                         </ControlTemplate>
                     </Setter.Value>
                 </Setter>

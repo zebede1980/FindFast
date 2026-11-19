@@ -52,6 +52,7 @@ public partial class UsageWindow : Window
     private UsageWindow(string folder)
     {
         InitializeComponent();
+        GlassChrome.Attach(this, RootGrid, Aurora, CaptionSpacer, captionHeight: 62); // the header doubles as the title bar
         _folder = folder;
         Title = $"Disk usage - {folder}";
         TitleText.Text = folder;
