@@ -252,9 +252,10 @@ public partial class App : Application
 
     protected override void OnExit(ExitEventArgs e)
     {
+        // Settings first: when Windows is restarting, it may end the process while the index is still shutting down.
+        Settings.Save();
         _runtimeGuard?.Dispose();
         try { Index?.Dispose(); } catch (Exception ex) { Logger.Warn(ex.Message); }
-        Settings.Save();
         base.OnExit(e);
     }
 }

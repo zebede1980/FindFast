@@ -62,22 +62,67 @@ public sealed class Settings
     private static readonly string FilePath = Path.Combine(Logger.Directory, "settings.json");
     private static readonly JsonSerializerOptions Options = new() { WriteIndented = true, DefaultIgnoreCondition = JsonIgnoreCondition.Never };
 
-    public static Settings Load()
+    public static Settings Load() => Load(FilePath);
+
+    /// <summary>
+    /// Reads the settings, falling back to the copy kept by the previous save when the file is missing or unreadable.
+    /// An unreadable file is moved aside to ".corrupt" rather than left to be saved over, so nothing is lost silently.
+    /// </summary>
+    public static Settings Load(string path)
     {
-        try
+        string backup = path + ".bak";
+        if (TryRead(path, out var settings)) return settings;
+        if (File.Exists(path))
         {
-            if (File.Exists(FilePath)) return JsonSerializer.Deserialize<Settings>(File.ReadAllText(FilePath), Options) ?? new Settings();
+            try { File.Move(path, path + ".corrupt", overwrite: true); }
+            catch (Exception ex) { Logger.Warn($"Could not move the unreadable settings aside: {ex.Message}"); }
         }
-        catch (Exception ex) { Logger.Warn($"Settings load failed: {ex.Message}"); }
+        if (TryRead(backup, out settings))
+        {
+            Logger.Info($"Settings restored from {backup}");
+            return settings;
+        }
         return new Settings();
     }
 
-    public void Save()
+    private static bool TryRead(string path, out Settings settings)
     {
+        settings = null!;
+        if (!File.Exists(path)) return false;
         try
         {
-            Directory.CreateDirectory(Logger.Directory);
-            File.WriteAllText(FilePath, JsonSerializer.Serialize(this, Options));
+            if (JsonSerializer.Deserialize<Settings>(File.ReadAllText(path), Options) is not { } read) return false;
+            settings = read;
+            return true;
+        }
+        catch (Exception ex)
+        {
+            Logger.Warn($"Settings load failed for {path}: {ex.Message}");
+            return false;
+        }
+    }
+
+    public void Save() => Save(FilePath);
+
+    /// <summary>
+    /// Writes the settings so that a crash or a forced restart part-way through leaves the previous file whole: the new
+    /// contents go to a temporary file, are flushed to disk, and only then take the old file's place. The old file is
+    /// kept as ".bak".
+    /// </summary>
+    public void Save(string path)
+    {
+        string temp = path + ".tmp";
+        try
+        {
+            Directory.CreateDirectory(Path.GetDirectoryName(path)!);
+            byte[] json = JsonSerializer.SerializeToUtf8Bytes(this, Options);
+            using (var stream = new FileStream(temp, FileMode.Create, FileAccess.Write, FileShare.None))
+            {
+                stream.Write(json);
+                stream.Flush(flushToDisk: true);
+            }
+            if (File.Exists(path)) File.Replace(temp, path, path + ".bak", ignoreMetadataErrors: true);
+            else File.Move(temp, path);
         }
         catch (Exception ex) { Logger.Warn($"Settings save failed: {ex.Message}"); }
     }
