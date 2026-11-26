@@ -19,15 +19,17 @@ public partial class FilePaneView : UserControl
 {
     private Point _dragStart;
     private bool _dragArmed;
-    private DataGridRow? _deferredSelectRow;
+    private FrameworkElement? _deferredSelectRow;
     private FileRow? _clickOpensFolder;
     private bool _focusGridOnResults;
-    private ScrollViewer? _gridScroller;
+    private ScrollViewer? _gridScroller, _tileScroller;
 
     /// <summary>Scroll position and selection of tabs that are not on screen, so switching tabs does not lose your place.</summary>
     private sealed class TabViewState
     {
         public double Offset;
+        /// <summary>Whether the offset is the tile view's (pixels) or the list's (rows).</summary>
+        public bool Tiles;
         public List<string> Selected = new();
     }
 
@@ -51,6 +53,7 @@ public partial class FilePaneView : UserControl
     public FilePaneView()
     {
         InitializeComponent();
+        Tiles.ContextMenu = RowMenu;
         Loaded += (_, _) => ApplyColumnLayout();
         Unloaded += (_, _) => SaveColumnLayout();
         Grid.ColumnReordered += (_, _) => SaveColumnLayout();
@@ -69,12 +72,14 @@ public partial class FilePaneView : UserControl
             old.PropertyChanged -= OnVmPropertyChanged;
             var state = _tabStates.GetOrCreateValue(old);
             state.Offset = Scroller?.VerticalOffset ?? 0;
-            state.Selected = Grid.SelectedItems.OfType<FileRow>().Take(500).Select(r => r.FullPath).ToList();
+            state.Tiles = ShowingTiles;
+            state.Selected = SelectedItems.OfType<FileRow>().Take(500).Select(r => r.FullPath).ToList();
         }
         EndAddressEdit(commit: false);
         if (e.NewValue is FileTabViewModel vm)
         {
             vm.PropertyChanged += OnVmPropertyChanged;
+            ApplyViewKind(vm, carrySelection: false);
             ApplyModeColumns();
             UpdateSortGlyphs();
             UpdateEmptyState();
@@ -84,8 +89,9 @@ public partial class FilePaneView : UserControl
                 Dispatcher.BeginInvoke(DispatcherPriority.Loaded, () =>
                 {
                     if (!ReferenceEquals(Vm, vm)) return;
+                    if (saved.Tiles != ShowingTiles) { Reselect(vm, saved.Selected, 0); return; }
                     if (saved.Offset > 0) Scroller?.ScrollToVerticalOffset(saved.Offset);
-                    Reselect(vm, saved.Selected, (int)saved.Offset);
+                    Reselect(vm, saved.Selected, TopIndex());
                 });
             }
         }
@@ -97,7 +103,72 @@ public partial class FilePaneView : UserControl
     private void OnPaneSizeChanged(object sender, SizeChangedEventArgs e)
         => CopyAcrossLabel.Visibility = MoveAcrossLabel.Visibility = e.NewSize.Width >= WidthForAcrossLabels ? Visibility.Visible : Visibility.Collapsed;
 
-    private ScrollViewer? Scroller => _gridScroller ??= MainWindow.FindVisualChild<ScrollViewer>(Grid);
+    private ScrollViewer? Scroller => ShowingTiles
+        ? _tileScroller ??= MainWindow.FindVisualChild<ScrollViewer>(Tiles)
+        : _gridScroller ??= MainWindow.FindVisualChild<ScrollViewer>(Grid);
+
+    // ---- the list on show: the detailed grid or the tiles ----
+
+    private bool ShowingTiles => Tiles.Visibility == Visibility.Visible;
+
+    /// <summary>Whichever list is on show. Everything that reads or changes the selection goes through this.</summary>
+    private Selector List => ShowingTiles ? Tiles : Grid;
+
+    private System.Collections.IList SelectedItems => ShowingTiles ? Tiles.SelectedItems : Grid.SelectedItems;
+
+    private object? CurrentItem => ShowingTiles ? Tiles.FocusedItem : Grid.CurrentItem;
+
+    private void UnselectAll()
+    {
+        if (ShowingTiles) Tiles.UnselectAll();
+        else Grid.UnselectAll();
+    }
+
+    /// <summary>The position of the first item on screen, which is where a large result is searched to put a selection back.</summary>
+    private int TopIndex()
+    {
+        double offset = Scroller?.VerticalOffset ?? 0;
+        if (!ShowingTiles) return (int)offset; // the list scrolls a row at a time
+        return Tiles.Panel is { Layout: var layout } ? (int)(offset / layout.TileHeight) * layout.Columns : 0;
+    }
+
+    /// <summary>The row or tile that holds <paramref name="d"/>, if it is inside one.</summary>
+    private static FrameworkElement? ItemContainerAt(DependencyObject d)
+        => (FrameworkElement?)MainWindow.FindVisualParent<DataGridRow>(d) ?? MainWindow.FindVisualParent<ListBoxItem>(d);
+
+    /// <summary>Selects just this row or tile and puts the keyboard cursor on it.</summary>
+    private void SelectOnly(FrameworkElement container)
+    {
+        SelectedItems.Clear();
+        Selector.SetIsSelected(container, true);
+        if (container is DataGridRow) Grid.CurrentItem = container.DataContext;
+        else Tiles.AnchorTo(container.DataContext);
+    }
+
+    /// <summary>
+    /// Shows the tab's files as tiles or as the list, whichever it asks for. Only the list on show is given the files, so
+    /// the hidden one costs nothing. Switching in the same tab keeps the selection and the keyboard where they were.
+    /// </summary>
+    private void ApplyViewKind(FileTabViewModel vm, bool carrySelection)
+    {
+        bool tiles = vm.ShowTiles;
+        if (tiles == ShowingTiles && (!tiles || ReferenceEquals(Tiles.ItemsSource, vm.Results))) return;
+        var selected = carrySelection ? SelectedItems.OfType<FileRow>().Take(5000).ToList() : new List<FileRow>();
+        bool hadFocus = List.IsKeyboardFocusWithin;
+        Tiles.ItemsSource = tiles ? vm.Results : null;
+        Tiles.Visibility = tiles ? Visibility.Visible : Visibility.Collapsed;
+        Grid.Visibility = tiles ? Visibility.Collapsed : Visibility.Visible;
+        // The grid kept its own selection while hidden; what was chosen among the tiles replaces it.
+        if (!tiles) Grid.UnselectAll();
+        if (selected.Count == 0 && !hadFocus) return;
+        Dispatcher.BeginInvoke(DispatcherPriority.Loaded, () =>
+        {
+            if (!ReferenceEquals(Vm, vm)) return;
+            foreach (var row in selected) SelectedItems.Add(row);
+            if (selected.Count > 0) FocusRow(selected[0].Position, select: false);
+            else if (hadFocus) FocusGrid();
+        });
+    }
 
     // ---- focus ----
 
@@ -109,8 +180,8 @@ public partial class FilePaneView : UserControl
 
     public void FocusGrid()
     {
-        if (Grid.SelectedItem is FileRow row) FocusRow(row.Position, select: false);
-        else Grid.Focus();
+        if (List.SelectedItem is FileRow row) FocusRow(row.Position, select: false);
+        else List.Focus();
     }
 
     public bool IsTextEntryFocused => Keyboard.FocusedElement is TextBoxBase or PasswordBox or ComboBox { IsEditable: true };
@@ -118,6 +189,7 @@ public partial class FilePaneView : UserControl
     /// <summary>Puts the keyboard cursor on a row (scrolling it into view) and optionally makes it the only selected row.</summary>
     private void FocusRow(int index, bool select)
     {
+        if (ShowingTiles) { Tiles.FocusIndex(index, select); return; }
         if (index < 0 || index >= Grid.Items.Count) { Grid.Focus(); return; }
         var item = Grid.Items[index];
         if (select)
@@ -369,7 +441,11 @@ public partial class FilePaneView : UserControl
         switch (e.PropertyName)
         {
             case nameof(FileTabViewModel.Results):
+                if (ShowingTiles) Tiles.ItemsSource = vm.Results;
                 OnResultsChanged(vm);
+                break;
+            case nameof(FileTabViewModel.ShowTiles):
+                ApplyViewKind(vm, carrySelection: true);
                 break;
             case nameof(FileTabViewModel.ShowPathColumn):
                 ApplyModeColumns();
@@ -398,16 +474,17 @@ public partial class FilePaneView : UserControl
         {
             // A refresh should not yank the list back to the top or drop the selection.
             double offset = Scroller?.VerticalOffset ?? 0;
-            var selectedPaths = Grid.SelectedItems.OfType<FileRow>().Take(500).Select(r => r.FullPath).ToList();
-            bool hadFocus = Grid.IsKeyboardFocusWithin;
+            int top = TopIndex();
+            var selectedPaths = SelectedItems.OfType<FileRow>().Take(500).Select(r => r.FullPath).ToList();
+            bool hadFocus = List.IsKeyboardFocusWithin;
             Dispatcher.BeginInvoke(DispatcherPriority.Loaded, () =>
             {
                 if (!ReferenceEquals(Vm, vm)) return;
                 UpdateSelectionText(); // the grid has swapped its rows by now, so the count reflects the new list
                 if (offset > 0) Scroller?.ScrollToVerticalOffset(offset);
                 if (pending != null && SelectByName(vm, pending)) return;
-                Reselect(vm, selectedPaths, (int)offset);
-                if (hadFocus && !Grid.IsKeyboardFocusWithin) FocusGrid();
+                Reselect(vm, selectedPaths, top);
+                if (hadFocus && !List.IsKeyboardFocusWithin) FocusGrid();
             });
             return;
         }
@@ -418,7 +495,7 @@ public partial class FilePaneView : UserControl
             UpdateSelectionText();
             if (pending != null && SelectByName(vm, pending)) return;
             Scroller?.ScrollToVerticalOffset(0);
-            if (focusGrid) Grid.Focus();
+            if (focusGrid) List.Focus();
         });
     }
 
@@ -441,7 +518,7 @@ public partial class FilePaneView : UserControl
         for (int i = first; i < last && wanted.Count > 0; i++)
         {
             var row = vm.Results[i];
-            if (wanted.Remove(row.FullPath)) Grid.SelectedItems.Add(row);
+            if (wanted.Remove(row.FullPath)) SelectedItems.Add(row);
         }
     }
 
@@ -455,6 +532,7 @@ public partial class FilePaneView : UserControl
 
     private void OnSelectionChanged(object sender, SelectionChangedEventArgs e)
     {
+        if (!ReferenceEquals(sender, List)) return; // the hidden list letting go of its selection
         UpdateSelectionText();
         Main?.OnPaneSelectionChanged(this);
     }
@@ -463,13 +541,13 @@ public partial class FilePaneView : UserControl
     {
         var vm = Vm;
         if (vm == null) return;
-        int count = Grid.SelectedItems.Count;
+        int count = SelectedItems.Count;
         vm.HasSelection = count > 0;
         if (count == 0) { vm.SelectionText = ""; return; }
         if (count > 20_000) { vm.SelectionText = $"{count:N0} selected"; return; }
         long size = 0;
         bool anyFolderUnknown = false;
-        foreach (var item in Grid.SelectedItems)
+        foreach (var item in SelectedItems)
         {
             if (item is not FileRow r) continue;
             size += r.Size;
@@ -480,8 +558,8 @@ public partial class FilePaneView : UserControl
 
     public IReadOnlyList<FileRow> SelectedRows()
     {
-        var rows = Grid.SelectedItems.OfType<FileRow>().Where(r => !r.IsDeleted).ToList();
-        if (rows.Count == 0 && Grid.CurrentItem is FileRow current && !current.IsDeleted && Grid.IsKeyboardFocusWithin) rows.Add(current);
+        var rows = SelectedItems.OfType<FileRow>().Where(r => !r.IsDeleted).ToList();
+        if (rows.Count == 0 && CurrentItem is FileRow current && !current.IsDeleted && List.IsKeyboardFocusWithin) rows.Add(current);
         return rows;
     }
 
@@ -489,7 +567,7 @@ public partial class FilePaneView : UserControl
     private List<string> SelectedPaths() => SelectedRows().Select(r => r.FullPath).ToList();
 
     /// <summary>The single selected row, for the preview pane.</summary>
-    public FileRow? PreviewRow => Grid.SelectedItems.Count == 1 ? Grid.SelectedItem as FileRow : null;
+    public FileRow? PreviewRow => SelectedItems.Count == 1 ? List.SelectedItem as FileRow : null;
 
     // ---- search box ----
 
@@ -503,8 +581,8 @@ public partial class FilePaneView : UserControl
                 e.Handled = true;
                 break;
             case Key.Down:
-            case Key.Enter when Grid.Items.Count > 0 && Grid.SelectedItem == null:
-                if (Grid.Items.Count > 0) FocusRow(0, select: true);
+            case Key.Enter when List.Items.Count > 0 && List.SelectedItem == null:
+                if (List.Items.Count > 0) FocusRow(0, select: true);
                 e.Handled = true;
                 break;
             case Key.Enter:
@@ -527,7 +605,7 @@ public partial class FilePaneView : UserControl
         e.Handled = true;
         var vm = Vm;
         if (vm == null) return;
-        var field = e.Column.SortMemberPath switch
+        SortBy(e.Column.SortMemberPath switch
         {
             "Path" => SortField.Path,
             "Size" => SortField.Size,
@@ -535,12 +613,17 @@ public partial class FilePaneView : UserControl
             "Created" => SortField.Created,
             "Extension" => SortField.Extension,
             _ => SortField.Name,
-        };
-        bool descending = field == vm.SortField && !vm.SortDescending;
-        if (field != vm.SortField && field is SortField.Size or SortField.Modified or SortField.Created) descending = true; // biggest / newest first
-        foreach (var c in Grid.Columns) c.SortDirection = null;
-        e.Column.SortDirection = descending ? ListSortDirection.Descending : ListSortDirection.Ascending;
+        });
+    }
+
+    /// <summary>Sorts by a field; choosing the current one again reverses it. Sizes and dates start biggest and newest first.</summary>
+    private void SortBy(SortField field)
+    {
+        var vm = Vm;
+        if (vm == null) return;
+        bool descending = field == vm.SortField ? !vm.SortDescending : field is SortField.Size or SortField.Modified or SortField.Created;
         vm.SetSort(field, descending);
+        UpdateSortGlyphs();
     }
 
     // ---- keyboard ----
@@ -557,7 +640,7 @@ public partial class FilePaneView : UserControl
         var mods = Keyboard.Modifiers;
         bool ctrl = mods.HasFlag(ModifierKeys.Control), shift = mods.HasFlag(ModifierKeys.Shift), alt = mods.HasFlag(ModifierKeys.Alt);
         bool typing = IsTextEntryFocused;
-        bool inList = Grid.IsKeyboardFocusWithin;
+        bool inList = List.IsKeyboardFocusWithin;
 
         // Navigation: valid anywhere in the pane.
         if (alt && !ctrl)
@@ -587,6 +670,9 @@ public partial class FilePaneView : UserControl
                 case Key.S: ExportResults(selectedOnly: shift); return true;
                 case Key.U when !shift: ShowDiskUsage(inList); return true;
                 case Key.D when shift: ShowDuplicates(inList); return true;
+                // Explorer's keys for its large icon and details views.
+                case Key.D2 or Key.NumPad2 when shift: vm.ShowTiles = true; return true;
+                case Key.D6 or Key.NumPad6 when shift: vm.ShowTiles = false; return true;
             }
         }
         if (key == Key.F5 && mods == ModifierKeys.None && (!inList || MainVm?.IsDualPane != true || SelectedRows().Count == 0)) { vm.Reload(); return true; }
@@ -619,7 +705,7 @@ public partial class FilePaneView : UserControl
             case Key.F6: TransferToOtherPane(move: true); return true;
             case Key.F7: NewFolder(); return true;
             case Key.Delete: case Key.F8: DeleteSelected(permanent: shift); return true;
-            case Key.Escape: if (Grid.SelectedItems.Count > 0) Grid.UnselectAll(); else FocusSearch(); return true;
+            case Key.Escape: if (SelectedItems.Count > 0) UnselectAll(); else FocusSearch(); return true;
         }
         return false;
     }
@@ -634,9 +720,9 @@ public partial class FilePaneView : UserControl
             if (Main?.FocusOtherPane(this) == true) e.Handled = true;
             return;
         }
-        if ((key == Key.Down || key == Key.Up) && Grid.SelectedItem == null && Grid.Items.Count > 0)
+        if ((key == Key.Down || key == Key.Up) && List.SelectedItem == null && List.Items.Count > 0)
         {
-            FocusRow(key == Key.Down ? 0 : Grid.Items.Count - 1, select: true);
+            FocusRow(key == Key.Down ? 0 : List.Items.Count - 1, select: true);
             e.Handled = true;
             return;
         }
@@ -666,7 +752,7 @@ public partial class FilePaneView : UserControl
     {
         if (e.ChangedButton != MouseButton.Left || e.OriginalSource is not DependencyObject d) return;
         if (MainWindow.FindVisualParent<DataGridColumnHeader>(d) != null) return;
-        if (MainWindow.FindVisualParent<DataGridRow>(d) is not { DataContext: FileRow row } || row.IsDeleted) return;
+        if (ItemContainerAt(d) is not { DataContext: FileRow row } || row.IsDeleted) return;
         var cell = MainWindow.FindVisualParent<DataGridCell>(d);
         if (ReferenceEquals(cell?.Column, PathColumn) || ReferenceEquals(cell?.Column, FullPathColumn))
         {
@@ -686,12 +772,12 @@ public partial class FilePaneView : UserControl
         _clickOpensFolder = null;
         if (e.OriginalSource is not DependencyObject d) return;
         if (MainWindow.FindVisualParent<DataGridColumnHeader>(d) != null || MainWindow.FindVisualParent<ScrollBar>(d) != null) return;
-        var row = MainWindow.FindVisualParent<DataGridRow>(d);
+        var row = ItemContainerAt(d);
         if (row == null)
         {
             // Clicking the empty space below the files clears the selection, as in Explorer.
-            if (Keyboard.Modifiers == ModifierKeys.None) Grid.UnselectAll();
-            Grid.Focus();
+            if (Keyboard.Modifiers == ModifierKeys.None) UnselectAll();
+            List.Focus();
             return;
         }
         _dragStart = e.GetPosition(this);
@@ -703,7 +789,7 @@ public partial class FilePaneView : UserControl
             && row.DataContext is FileRow { IsDirectory: true, IsDeleted: false } folder)
             _clickOpensFolder = folder;
         // Clicking an already-selected row inside a multi-selection must not collapse the selection before a drag starts.
-        if (row.IsSelected && Grid.SelectedItems.Count > 1 && Keyboard.Modifiers == ModifierKeys.None && e.ClickCount == 1)
+        if (Selector.GetIsSelected(row) && SelectedItems.Count > 1 && Keyboard.Modifiers == ModifierKeys.None && e.ClickCount == 1)
         {
             _deferredSelectRow = row;
             e.Handled = true;
@@ -714,9 +800,7 @@ public partial class FilePaneView : UserControl
     {
         if (_deferredSelectRow != null)
         {
-            Grid.SelectedItems.Clear();
-            _deferredSelectRow.IsSelected = true;
-            Grid.CurrentItem = _deferredSelectRow.DataContext;
+            SelectOnly(_deferredSelectRow);
             _deferredSelectRow = null;
         }
         // Still armed means the press never turned into a drag, so it was a click.
@@ -728,15 +812,10 @@ public partial class FilePaneView : UserControl
     private void OnGridPreviewMouseRightButtonDown(object sender, MouseButtonEventArgs e)
     {
         if (e.OriginalSource is not DependencyObject d || MainWindow.FindVisualParent<DataGridColumnHeader>(d) != null) return;
-        var row = MainWindow.FindVisualParent<DataGridRow>(d);
-        if (row == null) Grid.UnselectAll();
-        else if (!row.IsSelected)
-        {
-            Grid.SelectedItems.Clear();
-            row.IsSelected = true;
-            Grid.CurrentItem = row.DataContext;
-        }
-        Grid.Focus();
+        var row = ItemContainerAt(d);
+        if (row == null) UnselectAll();
+        else if (!Selector.GetIsSelected(row)) SelectOnly(row);
+        List.Focus();
     }
 
     private void OnGridMouseMove(object sender, MouseEventArgs e)
@@ -750,7 +829,7 @@ public partial class FilePaneView : UserControl
         if (paths.Length == 0) return;
         // The shell's own data object, as Explorer drags: other programs (Teams, browsers, mail) take it without fuss.
         var data = ShellDataObject.ForDrag(paths);
-        try { DragDrop.DoDragDrop(Grid, data, DragDropEffects.Copy | DragDropEffects.Move | DragDropEffects.Link); }
+        try { DragDrop.DoDragDrop(List, data, DragDropEffects.Copy | DragDropEffects.Move | DragDropEffects.Link); }
         catch (Exception ex) { Logger.Warn($"Drag failed: {ex.Message}"); }
     }
 
@@ -766,7 +845,7 @@ public partial class FilePaneView : UserControl
         if (vm == null || !e.Data.GetDataPresent(DataFormats.FileDrop) || e.Data.GetData(DataFormats.FileDrop) is not string[] paths || paths.Length == 0) return none;
 
         string? folder = forcedFolder;
-        if (folder == null && e.OriginalSource is DependencyObject d && MainWindow.FindVisualParent<DataGridRow>(d) is { DataContext: FileRow { IsDirectory: true, IsDeleted: false } row })
+        if (folder == null && e.OriginalSource is DependencyObject d && ItemContainerAt(d) is { DataContext: FileRow { IsDirectory: true, IsDeleted: false } row })
             folder = row.FullPath;
         folder ??= vm.Mode == ViewMode.Folder ? vm.Location : null;
         if (folder == null)
@@ -1177,10 +1256,10 @@ public partial class FilePaneView : UserControl
     {
         var vm = Vm;
         if (vm == null || vm.Results.Count > 100_000) return; // inverting a huge search result would materialise every row
-        var selected = new HashSet<int>(Grid.SelectedItems.OfType<FileRow>().Select(r => r.Position));
-        Grid.SelectedItems.Clear();
+        var selected = new HashSet<int>(SelectedItems.OfType<FileRow>().Select(r => r.Position));
+        SelectedItems.Clear();
         for (int i = 0; i < vm.Results.Count; i++)
-            if (!selected.Contains(i)) Grid.SelectedItems.Add(vm.Results[i]);
+            if (!selected.Contains(i)) SelectedItems.Add(vm.Results[i]);
     }
 
     // ---- context menus ----
@@ -1303,6 +1382,10 @@ public partial class FilePaneView : UserControl
         var sub = new MenuItem { Header = "Include _subfolders", IsCheckable = true, IsChecked = vm.Recursive, InputGestureText = "Ctrl+Shift+R" };
         sub.Click += (_, _) => vm.Recursive = !vm.Recursive;
         items.Add(sub);
+        var tiles = new MenuItem { Header = "_Thumbnails", IsCheckable = true, IsChecked = vm.ShowTiles, InputGestureText = "Ctrl+Shift+2" };
+        tiles.Click += (_, _) => vm.ShowTiles = !vm.ShowTiles;
+        items.Add(tiles);
+        items.Add(SortMenu(vm));
         items.Add(new Separator());
         items.Add(Item("Copy folder p_ath", () => ShellOps.CopyText(folder)));
         bool pinned = main?.IsPinned(folder) == true;
@@ -1318,6 +1401,24 @@ public partial class FilePaneView : UserControl
         items.Add(new Separator());
         items.Add(Item("More options (Windows menu)…", () => ShowWindowsMenu(Array.Empty<FileRow>(), MenuAnchor(), extended: false), "Shift+Right-click"));
         items.Add(Item("P_roperties", () => ShellOps.ShowProperties(folder), "Alt+Enter"));
+    }
+
+    /// <summary>"Sort by", for the tile view above all, which has no column headings to click.</summary>
+    private MenuItem SortMenu(FileTabViewModel vm)
+    {
+        var menu = new MenuItem { Header = "S_ort by" };
+        var fields = new List<(string Header, SortField Field)> { ("_Name", SortField.Name), ("Date _modified", SortField.Modified), ("_Size", SortField.Size), ("_Type", SortField.Extension), ("Date _created", SortField.Created) };
+        if (vm.ShowPathColumn) fields.Add(("_Path", SortField.Path));
+        foreach (var (header, field) in fields)
+        {
+            bool current = vm.SortField == field;
+            var item = Item(header, () => SortBy(field));
+            item.IsCheckable = true;
+            item.IsChecked = current;
+            if (current) item.InputGestureText = vm.SortDescending ? "Descending" : "Ascending";
+            menu.Items.Add(item);
+        }
+        return menu;
     }
 
     /// <summary>Adds the user's own entries (Settings > Right-click actions) that apply to everything in the selection.</summary>
@@ -1408,7 +1509,7 @@ public partial class FilePaneView : UserControl
         IReadOnlyList<int>? positions = null;
         if (selectedOnly)
         {
-            positions = Grid.SelectedItems.OfType<FileRow>().Select(r => r.Position).OrderBy(p => p).ToList();
+            positions = SelectedItems.OfType<FileRow>().Select(r => r.Position).OrderBy(p => p).ToList();
             if (positions.Count == 0) { selectedOnly = false; positions = null; }
         }
         if (result.Count == 0) return;

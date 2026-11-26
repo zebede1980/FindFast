@@ -74,7 +74,9 @@ public sealed class PaneViewModel : ObservableObject
     {
         if (_closed.Count == 0) return;
         var state = _closed.Pop();
-        AddTab(state.Location, state.Query, state.Recursive).IsLocked = state.Locked;
+        var tab = AddTab(state.Location, state.Query, state.Recursive);
+        tab.IsLocked = state.Locked;
+        tab.ShowTiles = state.Tiles;
     }
 
     public void SelectRelative(int delta)
@@ -96,7 +98,7 @@ public sealed class PaneViewModel : ObservableObject
     public void Restore(IReadOnlyList<TabState> tabs, int selected, string fallbackLocation)
     {
         // Added directly (not via AddTab) so the saved order is kept and only the selected tab loads its folder.
-        foreach (var t in tabs) Tabs.Add(new FileTabViewModel(_index, t.Location, t.Query, t.Recursive) { IsLocked = t.Locked });
+        foreach (var t in tabs) Tabs.Add(new FileTabViewModel(_index, t.Location, t.Query, t.Recursive) { IsLocked = t.Locked, ShowTiles = t.Tiles });
         if (Tabs.Count == 0) Tabs.Add(new FileTabViewModel(_index, fallbackLocation));
         SelectedTab = Tabs[Math.Clamp(selected, 0, Tabs.Count - 1)];
     }

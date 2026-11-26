@@ -144,6 +144,8 @@ public sealed class TabState
     public string Query { get; set; } = "";
     public bool Recursive { get; set; }
     public bool Locked { get; set; }
+    /// <summary>Shown as thumbnails rather than the detailed list.</summary>
+    public bool Tiles { get; set; }
 }
 
 /// <summary>A right-click entry the user made: a program to start with the selected items. See <see cref="CustomActions"/>.</summary>

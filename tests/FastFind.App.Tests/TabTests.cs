@@ -481,4 +481,20 @@ public sealed class OtherPaneTests : IDisposable
         Assert.Equal(_root, main.Left.SelectedTab.Location);
         return Task.CompletedTask;
     });
+
+    [Fact]
+    public void TheThumbnailViewBelongsToItsTabAndSurvivesClosingAndReopening() => Ui.Run(() =>
+    {
+        var main = Start(dualPane: true);
+        var tab = main.Left.SelectedTab!;
+        tab.ShowTiles = true;
+        Assert.True(tab.ToState().Tiles);
+
+        var other = main.Left.AddTab(_docs);
+        Assert.False(other.ShowTiles);
+        main.Left.CloseTab(tab);
+        main.Left.ReopenClosedTab();
+        Assert.True(main.Left.SelectedTab!.ShowTiles);
+        return Task.CompletedTask;
+    });
 }

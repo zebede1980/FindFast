@@ -93,6 +93,10 @@
                               ToolTip="Lock this tab: clicking a folder shows it in the other pane, so you keep your place here (Ctrl+Shift+L)">
                     <TextBlock FontFamily="{StaticResource IconFont}" Text="&#xE72E;" FontSize="13" />
                 </ToggleButton>
+                <ToggleButton x:Name="TilesToggle" Style="{StaticResource PillToggle}" Padding="0" IsChecked="{Binding ShowTiles}" AutomationProperties.Name="Thumbnails"
+                              ToolTip="Thumbnails: show the files as a grid of pictures (Ctrl+Shift+2; Ctrl+Shift+6 for the list)">
+                    <TextBlock FontFamily="{StaticResource IconFont}" Text="&#xE8A9;" FontSize="13" />
+                </ToggleButton>
                 <ToggleButton x:Name="SubfoldersToggle" Style="{StaticResource PillToggle}" IsChecked="{Binding Recursive}" AutomationProperties.Name="Include subfolders"
                               ToolTip="Include subfolders: show this folder and everything beneath it as one list (Ctrl+Shift+R)"
                               Visibility="{Binding IsEverywhere, Converter={StaticResource InverseBoolToVisibility}}">
@@ -342,6 +346,58 @@
                     <DataGridTextColumn x:Name="FullPathColumn" Header="Full path" Binding="{Binding FullPath}" Width="3*" SortMemberPath="Path" Visibility="Collapsed" ElementStyle="{StaticResource DimText}" />
                 </DataGrid.Columns>
             </DataGrid>
+
+            <!-- The same files as a grid of thumbnails. Its items are set from code, and only while it is on show. -->
+            <ctl:TileListBox x:Name="Tiles" Visibility="Collapsed" SelectionMode="Extended" Background="Transparent" BorderThickness="0" Padding="0"
+                             FontSize="12" AllowDrop="True" AutomationProperties.Name="Files"
+                             ScrollViewer.CanContentScroll="True" ScrollViewer.HorizontalScrollBarVisibility="Disabled"
+                             VirtualizingPanel.IsVirtualizing="True" VirtualizingPanel.VirtualizationMode="Standard"
+                             MouseDoubleClick="OnRowDoubleClick" PreviewMouseLeftButtonDown="OnGridPreviewMouseLeftButtonDown"
+                             PreviewMouseLeftButtonUp="OnGridPreviewMouseLeftButtonUp" PreviewMouseRightButtonDown="OnGridPreviewMouseRightButtonDown"
+                             MouseMove="OnGridMouseMove" PreviewKeyDown="OnGridPreviewKeyDown" PreviewMouseDown="OnGridPreviewMouseDown"
+                             ContextMenuOpening="OnContextMenuOpening" SelectionChanged="OnSelectionChanged"
+                             DragOver="OnGridDragOver" DragLeave="OnGridDragLeave" Drop="OnGridDrop">
+                <ctl:TileListBox.ItemsPanel>
+                    <ItemsPanelTemplate>
+                        <ctl:VirtualizingTilePanel TileWidth="132" TileHeight="164" />
+                    </ItemsPanelTemplate>
+                </ctl:TileListBox.ItemsPanel>
+                <ctl:TileListBox.ItemContainerStyle>
+                    <Style TargetType="ListBoxItem">
+                        <Setter Property="Opacity" Value="{Binding IsHidden, Converter={StaticResource HiddenOpacity}}" />
+                        <Setter Property="Foreground" Value="{DynamicResource TextFillColorPrimaryBrush}" />
+                        <Setter Property="FocusVisualStyle" Value="{x:Null}" />
+                        <Setter Property="AutomationProperties.Name" Value="{Binding Name}" />
+                        <Setter Property="Template">
+                            <Setter.Value>
+                                <ControlTemplate TargetType="ListBoxItem">
+                                    <Border x:Name="Bd" Margin="3" Padding="6,8,6,4" CornerRadius="8" BorderThickness="1" Background="Transparent" BorderBrush="Transparent">
+                                        <DockPanel>
+                                            <ctl:HighlightTextBlock DockPanel.Dock="Bottom" SourceText="{Binding Name}" Margin="0,6,0,0" MaxHeight="34"
+                                                                    TextWrapping="Wrap" TextTrimming="CharacterEllipsis" TextAlignment="Center"
+                                                                    HighlightBrush="{DynamicResource AccentTextFillColorPrimaryBrush}"
+                                                                    Highlighter="{Binding DataContext.NameHighlighter, RelativeSource={RelativeSource AncestorType=UserControl}}" />
+                                            <ctl:ThumbnailImage File="{Binding}" ThumbnailSize="112" Width="112" Height="104" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                        </DockPanel>
+                                    </Border>
+                                    <ControlTemplate.Triggers>
+                                        <Trigger Property="IsMouseOver" Value="True">
+                                            <Setter TargetName="Bd" Property="Background" Value="{DynamicResource FrostHoverBrush}" />
+                                        </Trigger>
+                                        <Trigger Property="IsSelected" Value="True">
+                                            <Setter TargetName="Bd" Property="Background" Value="{DynamicResource RowSelectedBrush}" />
+                                            <Setter TargetName="Bd" Property="BorderBrush" Value="{DynamicResource FrostActiveStrokeBrush}" />
+                                        </Trigger>
+                                        <Trigger Property="IsKeyboardFocused" Value="True">
+                                            <Setter TargetName="Bd" Property="BorderBrush" Value="{DynamicResource AccentFillColorDefaultBrush}" />
+                                        </Trigger>
+                                    </ControlTemplate.Triggers>
+                                </ControlTemplate>
+                            </Setter.Value>
+                        </Setter>
+                    </Style>
+                </ctl:TileListBox.ItemContainerStyle>
+            </ctl:TileListBox>
 
             <!-- Empty state -->
             <StackPanel x:Name="EmptyState" VerticalAlignment="Center" HorizontalAlignment="Center" IsHitTestVisible="False" Visibility="Collapsed" MaxWidth="420">

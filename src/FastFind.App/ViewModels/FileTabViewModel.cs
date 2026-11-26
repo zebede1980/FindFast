@@ -39,6 +39,7 @@ public sealed class FileTabViewModel : ObservableObject, IDisposable
     private string _location = "";
     private bool _recursive;
     private bool _isLocked;
+    private bool _showTiles;
     private readonly List<string> _back = new();
     private readonly List<string> _forward = new();
 
@@ -131,6 +132,13 @@ public sealed class FileTabViewModel : ObservableObject, IDisposable
     {
         get => _isLocked;
         set { if (Set(ref _isLocked, value)) OnPropertyChanged(nameof(TabGlyph)); }
+    }
+
+    /// <summary>Shows the files as a grid of thumbnails rather than the detailed list (Ctrl+Shift+2 and Ctrl+Shift+6).</summary>
+    public bool ShowTiles
+    {
+        get => _showTiles;
+        set => Set(ref _showTiles, value);
     }
 
     public bool CanGoBack => _back.Count > 0;
@@ -646,7 +654,7 @@ public sealed class FileTabViewModel : ObservableObject, IDisposable
         }, CancellationToken.None, TaskContinuationOptions.None, TaskScheduler.FromCurrentSynchronizationContext());
     }
 
-    public TabState ToState() => new() { Location = _location, Query = _queryText, Recursive = _recursive, Locked = _isLocked };
+    public TabState ToState() => new() { Location = _location, Query = _queryText, Recursive = _recursive, Locked = _isLocked, Tiles = _showTiles };
 
     /// <summary>What assistive technology announces for the tab.</summary>
     public override string ToString() => IsEverywhere ? Title : $"{Title} ({_location})";

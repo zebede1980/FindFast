@@ -10,6 +10,12 @@ A tab is a **location plus a query**:
 * Type in the box: the folder is filtered as you type, with the full query language.
 * **Subfolders** on: the folder and everything beneath it as one flat, sortable, searchable list.
 
+Any of these can be shown as a detailed list or as **thumbnails** (the grid button beside Subfolders, or Ctrl+Shift+2
+and Ctrl+Shift+6 as in Explorer): a grid of tiles with each picture's thumbnail, or the icon of anything else. Only
+the tiles on screen are made, so a folder of thousands of photos scrolls freely. Arrow keys move through the grid;
+selecting, opening, dragging and the right-click menu work as in the list, and "Sort by" on the right-click menu of
+the empty space stands in for the column headings. Each tab remembers which view it is in.
+
 ## What it does
 
 ### File manager
@@ -214,7 +220,8 @@ dotnet test
   and the duplicate finder run for real on a temporary folder (files that differ only in the middle, hard links,
   locked files, what the index and the disk offer for comparing, and the check made again before deleting).
 * `FastFind.App.Tests`: tab behaviour on a real temporary folder (listing, filtering, history, subfolders, live
-  refresh, folder sizes), zip round trip, converting pictures to JPG (details kept, no double turning,
+  refresh, folder sizes, the thumbnail view kept per tab), the tile grid's layout, arrow keys and scrolling (only the
+  tiles on screen made, even with 10,000 items), zip round trip, converting pictures to JPG (details kept, no double turning,
   transparency over white), export, name validation, the disk usage map's layout and shading (every
   pixel accounted for, areas in proportion, blocks nested in their folders), the rows of its tree, thumbnail
   orientation, and clean-ups run for real against a made-up machine in a temporary folder (files in use, new files,

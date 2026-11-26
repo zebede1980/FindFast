@@ -88,7 +88,8 @@ public static class ShellThumbnails
         return tcs.Task;
     }
 
-    private static ImageSource? Get(string path, int size, Action<ImageSource>? interim, CancellationToken ct)
+    /// <summary>As <see cref="GetAsync"/>, but on the calling thread, which must be an STA thread.</summary>
+    internal static ImageSource? Get(string path, int size, Action<ImageSource>? interim, CancellationToken ct)
     {
         // Asking for the thumbnail alone tells "there is none" apart from "not ready yet"; asking for either would
         // quietly hand back the icon in both cases.
