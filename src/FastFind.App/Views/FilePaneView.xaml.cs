@@ -1137,6 +1137,42 @@ public partial class FilePaneView : UserControl
         }, TaskScheduler.FromCurrentSynchronizationContext());
     }
 
+    /// <summary>Makes a JPG copy beside each selected picture. One that fails does not stop the rest.</summary>
+    private void ConvertSelectedToJpeg()
+    {
+        var pictures = SelectedPaths().Where(JpegConverter.CanConvert).ToList();
+        var vm = Vm;
+        if (pictures.Count == 0 || vm == null) return;
+        var main = MainVm;
+        string folder = Path.GetDirectoryName(pictures[0]) ?? vm.Location;
+        vm.SetTransientStatus($"Converting {Count(pictures.Count)} to JPG…");
+        Task.Run(() =>
+        {
+            var made = new List<string>();
+            var failures = new List<string>();
+            foreach (var picture in pictures)
+            {
+                try { made.Add(JpegConverter.ToJpeg(picture)); }
+                catch (Exception e)
+                {
+                    Logger.Warn($"Convert to JPG failed for {picture}: {e}");
+                    failures.Add($"{Path.GetFileName(picture)}: {e.Message}");
+                }
+            }
+            return (made, failures);
+        }).ContinueWith(t =>
+        {
+            var (made, failures) = t.Result;
+            if (made.Count > 0 && string.Equals(vm.Location, PathUtil.Normalize(folder), StringComparison.OrdinalIgnoreCase)) vm.PendingSelectName = Path.GetFileName(made[0]);
+            main?.RefreshFolderViews();
+            string done = made.Count == 1 ? $"Created {Path.GetFileName(made[0])}." : $"Created {made.Count:N0} JPGs.";
+            vm.SetTransientStatus(failures.Count == 0 ? done
+                : failures.Count == 1 ? (made.Count == 0 ? $"Convert failed: {failures[0]}" : $"{done} 1 failed, {failures[0]}")
+                : made.Count == 0 ? $"All {failures.Count:N0} failed to convert. First, {failures[0]}"
+                : $"{done} {failures.Count:N0} failed. First, {failures[0]}");
+        }, TaskScheduler.FromCurrentSynchronizationContext());
+    }
+
     private void InvertSelection()
     {
         var vm = Vm;
@@ -1236,6 +1272,7 @@ public partial class FilePaneView : UserControl
 
         if (rows.All(r => ZipOps.IsZip(r.FullPath))) items.Add(Item(single ? $"Extract to \"{Path.GetFileNameWithoutExtension(first.Name)}\\\"" : "Extract each to its own folder", ExtractSelected));
         items.Add(Item("Compress to ZIP", CompressSelected));
+        if (rows.All(r => !r.IsDirectory && JpegConverter.CanConvert(r.FullPath))) items.Add(Item(single ? "Convert to _JPG" : $"Convert {rows.Count:N0} to _JPG", ConvertSelectedToJpeg));
         if (single && first.IsDirectory)
         {
             bool pinned = main?.IsPinned(first.FullPath) == true;

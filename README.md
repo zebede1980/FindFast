@@ -33,6 +33,9 @@ A tab is a **location plus a query**:
   sidebar, and to or from other programs. Dropping moves within a drive and copies between drives; Ctrl copies, Shift moves.
 * **Delete** to the Recycle Bin (Del) or permanently (Shift+Del); **rename** (F2) and **bulk rename** (Ctrl+F2);
   **new folder** (Ctrl+Shift+N) and **new file** (Ctrl+N); **zip and unzip**; Properties (Alt+Enter).
+* **Convert to JPG** on the right-click menu of HEIC (iPhone), HEIF, AVIF, WebP and JPEG XL pictures: a JPG copy is
+  saved beside each one, keeping the date taken, camera details, location and colour profile, the right way up.
+  It uses the decoders in Windows, so HEIC needs Microsoft's free HEIF Image Extensions from the Store.
 * **The real Windows right-click menu** (Send to, 7-Zip, Git, Open with, New...) is one click away at the bottom of the
   built-in menu, or directly with Shift+right-click.
 * **Folders stay up to date on their own**: each folder on show is watched, so files created or deleted by other
@@ -211,7 +214,8 @@ dotnet test
   and the duplicate finder run for real on a temporary folder (files that differ only in the middle, hard links,
   locked files, what the index and the disk offer for comparing, and the check made again before deleting).
 * `FastFind.App.Tests`: tab behaviour on a real temporary folder (listing, filtering, history, subfolders, live
-  refresh, folder sizes), zip round trip, export, name validation, the disk usage map's layout and shading (every
+  refresh, folder sizes), zip round trip, converting pictures to JPG (details kept, no double turning,
+  transparency over white), export, name validation, the disk usage map's layout and shading (every
   pixel accounted for, areas in proportion, blocks nested in their folders), the rows of its tree, thumbnail
   orientation, and clean-ups run for real against a made-up machine in a temporary folder (files in use, new files,
   files that arrived after measuring, links and protected folders are all left alone), and the ticking rules of the
